@@ -44,6 +44,23 @@ function Food({
     <div className={`food food-${index} ${className}`} aria-hidden="true" />
   );
 }
+function ComboFood({
+  product,
+  side,
+  drink,
+}: {
+  product: Product;
+  side: Product;
+  drink: Product;
+}) {
+  return (
+    <div className="combo-food" aria-hidden="true">
+      <Food index={product.image} className="combo-main" />
+      <Food index={side.image} className="combo-side" />
+      <Food index={drink.image} className="combo-drink" />
+    </div>
+  );
+}
 function Modal({
   children,
   onClose,
@@ -97,10 +114,10 @@ function Customize({
   initialCombo: boolean;
 }) {
   const [options, setOptions] = useState<string[]>([]);
-  const [combo, setCombo] = useState(initialCombo);
   const side = catalog.products.find((p) => p.id === catalog.combo.sideId)!;
   const drink = catalog.products.find((p) => p.id === catalog.combo.drinkId)!;
   const comboAvailable = side.available && drink.available;
+  const [combo, setCombo] = useState(initialCombo && comboAvailable);
   const delta = side.price + drink.price - catalog.combo.discount;
   const total =
     p.price +
@@ -113,15 +130,37 @@ function Customize({
       <div className="customize">
         <div className="product-visual">
           <span className="eyebrow">СОБЕРИ ПО-СВОЕМУ</span>
-          <Food index={p.image} />
+          {combo ? (
+            <ComboFood product={p} side={side} drink={drink} />
+          ) : (
+            <Food index={p.image} />
+          )}
           <span className="nutrition">
-            {p.weight} · {p.kcal} ккал
+            {combo
+              ? "Бургер + гарнир + напиток"
+              : `${p.weight} · ${p.kcal} ккал`}
           </span>
         </div>
         <div className="customize-body">
           <span className="eyebrow orange">ТВОЙ ВКУС. ТВОИ ПРАВИЛА.</span>
-          <h2>{p.name}</h2>
+          <h2>
+            {p.name}
+            {combo ? " комбо" : ""}
+          </h2>
           <p>{p.description}</p>
+          {combo && (
+            <div className="combo-includes">
+              <b>В комбо входят</b>
+              <ul>
+                {[p, side, drink].map((part) => (
+                  <li key={part.id}>
+                    <Check size={14} aria-hidden="true" />
+                    {part.name} <span>{part.weight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {p.options.length > 0 && (
             <>
               <h3>Сделаем ещё вкуснее?</h3>
@@ -161,7 +200,7 @@ function Customize({
                 onChange={(e) => setCombo(e.target.checked)}
               />
               <div>
-                <b>А давай комбо?</b>
+                <b>{combo ? "Комбо выбрано" : "А давай комбо?"}</b>
                 <small>
                   Фри + кола · экономия {money(catalog.combo.discount)}
                 </small>
@@ -405,10 +444,15 @@ function App() {
         )}
       </main>
     );
+  const comboSide = catalog.products.find(
+    (p) => p.id === catalog.combo.sideId,
+  )!;
+  const comboDrink = catalog.products.find(
+    (p) => p.id === catalog.combo.drinkId,
+  )!;
+  const comboAvailable = comboSide.available && comboDrink.available;
   const comboDelta =
-    catalog.products.find((p) => p.id === catalog.combo.sideId)!.price +
-    catalog.products.find((p) => p.id === catalog.combo.drinkId)!.price -
-    catalog.combo.discount;
+    comboSide.price + comboDrink.price - catalog.combo.discount;
   const products = catalog.products.filter(
     (p) =>
       category === "popular" ||
@@ -482,50 +526,52 @@ function App() {
           </div>
           <span className="menu-note">Выбирай. Добавляй. Наслаждайся.</span>
         </div>
-        {category === "popular" && (
-          <section className="hero">
-            <div className="hero-copy">
-              <span className="hero-label">
-                <Sparkles size={14} /> СОБРАНО ДЛЯ ТЕБЯ
-              </span>
-              <h2>
-                Двойной смэш.
-                <br />
-                Двойное <em>да.</em>
-              </h2>
-              <p>
-                Сочный бургер, хрустящий фри
-                <br />и холодная кола. Идеальное трио.
-              </p>
-              <button
-                className="hero-cta"
-                onClick={() =>
-                  setSelected({ product: catalog.products[0], combo: true })
-                }
-              >
-                Хочу комбо{" "}
-                <span>
-                  {money(catalog.products[0].price + comboDelta)}{" "}
-                  <ArrowUpRight size={20} />
+        {category === "popular" &&
+          comboAvailable &&
+          catalog.products[0].available && (
+            <section className="hero">
+              <div className="hero-copy">
+                <span className="hero-label">
+                  <Sparkles size={14} /> СОБРАНО ДЛЯ ТЕБЯ
                 </span>
-              </button>
-            </div>
-            <div className="hero-art">
-              <div className="orbit" />
-              <Food index={0} />
-              <span className="hero-stamp">
-                ВМЕСТЕ
-                <br />
-                <b>−{money(catalog.combo.discount)}</b>
-                <br />
-                ВЫГОДНЕЕ
-              </span>
-            </div>
-            <div className="hero-index">
-              01 <span>/ 01</span>
-            </div>
-          </section>
-        )}
+                <h2>
+                  Двойной смэш.
+                  <br />
+                  Двойное <em>да.</em>
+                </h2>
+                <p>
+                  Сочный бургер, хрустящий фри
+                  <br />и холодная кола. Идеальное трио.
+                </p>
+                <button
+                  className="hero-cta"
+                  onClick={() =>
+                    setSelected({ product: catalog.products[0], combo: true })
+                  }
+                >
+                  Хочу комбо{" "}
+                  <span>
+                    {money(catalog.products[0].price + comboDelta)}{" "}
+                    <ArrowUpRight size={20} />
+                  </span>
+                </button>
+              </div>
+              <div className="hero-art">
+                <div className="orbit" />
+                <Food index={0} />
+                <span className="hero-stamp">
+                  ВМЕСТЕ
+                  <br />
+                  <b>−{money(catalog.combo.discount)}</b>
+                  <br />
+                  ВЫГОДНЕЕ
+                </span>
+              </div>
+              <div className="hero-index">
+                01 <span>/ 01</span>
+              </div>
+            </section>
+          )}
         <section className="products-section">
           <div className="section-heading">
             <div>
@@ -545,7 +591,9 @@ function App() {
               <button
                 className="product-card"
                 key={p.id}
-                disabled={!p.available}
+                disabled={
+                  !p.available || (category === "combo" && !comboAvailable)
+                }
                 onClick={() =>
                   setSelected({ product: p, combo: category === "combo" })
                 }
@@ -553,24 +601,50 @@ function App() {
               >
                 <div className="card-image">
                   <span className={`badge ${p.id === "smash" ? "hot" : ""}`}>
-                    {!p.available
+                    {!p.available || (category === "combo" && !comboAvailable)
                       ? "Скоро вернётся"
                       : category === "combo"
                         ? `Выгода ${money(catalog.combo.discount)}`
                         : p.badge}
                   </span>
-                  <Food index={p.image} />
+                  {category === "combo" ? (
+                    <ComboFood
+                      product={p}
+                      side={comboSide}
+                      drink={comboDrink}
+                    />
+                  ) : (
+                    <Food index={p.image} />
+                  )}
                 </div>
                 <div className="card-body">
                   <div className="card-meta">
                     {category === "combo" ? "БУРГЕР + ФРИ + КОЛА" : p.weight}
                   </div>
-                  <h3>{p.name}</h3>
-                  <p>{p.description}</p>
+                  <h3>
+                    {p.name}
+                    {category === "combo" ? " комбо" : ""}
+                  </h3>
+                  <p>
+                    {category === "combo"
+                      ? `${p.name}, ${comboSide.name.toLowerCase()} ${comboSide.weight} и ${comboDrink.name.toLowerCase()} ${comboDrink.weight}.`
+                      : p.description}
+                  </p>
                   <div className="card-bottom">
-                    <strong>
-                      {money(p.price + (category === "combo" ? comboDelta : 0))}
-                    </strong>
+                    <div className="card-price">
+                      {category === "combo" && (
+                        <s
+                          aria-label={`По отдельности ${money(p.price + comboSide.price + comboDrink.price)}`}
+                        >
+                          {money(p.price + comboSide.price + comboDrink.price)}
+                        </s>
+                      )}
+                      <strong>
+                        {money(
+                          p.price + (category === "combo" ? comboDelta : 0),
+                        )}
+                      </strong>
+                    </div>
                     <span className="add-button">
                       <Plus size={22} />
                     </span>
