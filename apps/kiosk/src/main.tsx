@@ -230,6 +230,7 @@ function App() {
   const quote = priced?.fingerprint === fingerprint ? priced.quote : null;
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
   const cartRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLElement>(null);
 
   function loadMenu() {
     setLoadError(false);
@@ -451,7 +452,10 @@ function App() {
             key={id}
             className={`nav-item ${category === id ? "active" : ""}`}
             aria-pressed={category === id}
-            onClick={() => setCategory(id)}
+            onClick={() => {
+              setCategory(id);
+              menuRef.current?.scrollIntoView({ block: "start" });
+            }}
           >
             <Icon size={25} strokeWidth={1.65} />
             <span>{name}</span>
@@ -468,7 +472,7 @@ function App() {
           </span>
         </div>
       </nav>
-      <main className="menu">
+      <main className="menu" ref={menuRef}>
         <div className="welcome">
           <div>
             <span className="eyebrow">ПРИВЕТ, ГОЛОДНЫЙ ДРУГ</span>
@@ -534,7 +538,7 @@ function App() {
                     : "Всё, что нужно для хорошего перерыва."}
               </p>
             </div>
-            <span className="item-count">{products.length} позиций</span>
+            <span className="item-count">Блюд: {products.length}</span>
           </div>
           <div className="product-grid">
             {products.map((p) => (
@@ -552,7 +556,7 @@ function App() {
                     {!p.available
                       ? "Скоро вернётся"
                       : category === "combo"
-                        ? "Выгода 70 ₽"
+                        ? `Выгода ${money(catalog.combo.discount)}`
                         : p.badge}
                   </span>
                   <Food index={p.image} />
