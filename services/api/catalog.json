@@ -1,0 +1,18 @@
+{
+  "currency": "RUB",
+  "combo": {"sideId": "fries", "drinkId": "cola", "discount": 7000},
+  "products": [
+    {"id":"smash","name":"Двойной смэш","category":"burgers","description":"Две говяжьи котлеты, чеддер, свежие овощи и наш фирменный соус.","price":34900,"weight":"280 г","kcal":684,"image":0,"badge":"Хит","available":true,"options":["cheese","bacon","no-onion"]},
+    {"id":"chicken","name":"Криспи чикен","category":"burgers","description":"Хрустящее куриное филе, салат айсберг и нежный соус в булочке бриошь.","price":28900,"weight":"240 г","kcal":536,"image":1,"badge":"Нежный внутри","available":true,"options":["cheese","no-onion"]},
+    {"id":"bbq","name":"Бекон BBQ","category":"burgers","description":"Говядина с огня, хрустящий бекон, чеддер и дымный соус BBQ.","price":38900,"weight":"290 г","kcal":726,"image":2,"badge":"С огоньком","available":true,"options":["cheese","bacon","no-onion"]},
+    {"id":"fries","name":"Картофель фри","category":"sides","description":"Золотистый, хрустящий, с щепоткой морской соли.","price":14900,"weight":"120 г","kcal":365,"image":3,"badge":"Идеальная пара","available":true,"options":["sauce"]},
+    {"id":"cola","name":"Кола со льдом","category":"drinks","description":"Освежающая классика со льдом. Стакан 400 мл.","price":12900,"weight":"400 мл","kcal":168,"image":4,"badge":"Освежись","available":true,"options":[]},
+    {"id":"nuggets","name":"Куриные наггетсы","category":"sides","description":"Шесть кусочков нежного куриного филе в золотистой панировке.","price":19900,"weight":"6 шт. · 150 г","kcal":412,"image":5,"badge":"На компанию","available":true,"options":["sauce"]}
+  ],
+  "options": [
+    {"id":"cheese","name":"Ещё чеддера","price":3900},
+    {"id":"bacon","name":"Хрустящий бекон","price":5900},
+    {"id":"no-onion","name":"Без лука","price":0},
+    {"id":"sauce","name":"Сырный соус","price":3900}
+  ]
+}

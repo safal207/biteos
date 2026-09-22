@@ -1,0 +1,15 @@
+services:
+  kiosk:
+    build: .
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - orders:/data
+    depends_on:
+      - recommender
+    restart: unless-stopped
+  recommender:
+    build: services/recommender
+    restart: unless-stopped
+volumes:
+  orders:
