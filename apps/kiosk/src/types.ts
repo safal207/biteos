@@ -52,12 +52,18 @@ export const money = (amount: number) =>
     currency: "RUB",
     maximumFractionDigits: 0,
   }).format(amount / 100);
+export const IS_DEMO = import.meta.env.VITE_DEMO === "true";
 export async function api<T>(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
   key?: string,
 ): Promise<T> {
+  if (IS_DEMO) {
+    const { demoApi } = await import("./demo");
+    signal?.throwIfAborted();
+    return demoApi(path, body, key) as T;
+  }
   const response = await fetch(`/api/${path}`, {
     method: body === undefined ? "GET" : "POST",
     headers: {

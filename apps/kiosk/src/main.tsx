@@ -29,7 +29,7 @@ import type {
   Product,
   Quote,
 } from "./types";
-import { api, money } from "./types";
+import { api, money, IS_DEMO } from "./types";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -434,7 +434,9 @@ function App() {
         </h1>
         <p>
           {loadError
-            ? "Проверьте, запущен ли сервер BiteOS."
+            ? IS_DEMO
+              ? "Обновите страницу или проверьте подключение к интернету."
+              : "Проверьте, запущен ли сервер BiteOS."
             : "Ещё одно мгновение"}
         </p>
         {loadError && (
@@ -470,7 +472,11 @@ function App() {
   return (
     <div className="app-shell">
       <header className="header">
-        <a className="brand" href="/" aria-label="BiteOS — главная">
+        <a
+          className="brand"
+          href={import.meta.env.BASE_URL}
+          aria-label="BiteOS — главная"
+        >
           bite<span>os</span>
           <i />
         </a>
@@ -479,7 +485,9 @@ function App() {
           ГОРЯЧЕЕ. СВЕЖЕЕ. ТВОЁ.
         </div>
         <div className="header-end">
-          <span className="demo-label">ДЕМО-КИОСК</span>
+          <span className="demo-label">
+            {IS_DEMO ? "ОНЛАЙН-ДЕМО" : "ДЕМО-КИОСК"}
+          </span>
           <button
             className="icon-button"
             aria-label="Полный экран"
@@ -881,8 +889,9 @@ function App() {
             <div className="checkout-notice">
               <ShoppingBag size={22} />
               <p>
-                Это демонстрация BiteOS. Заказ сохранится локально, деньги не
-                спишутся и на кухню он не поступит.
+                {IS_DEMO
+                  ? "Это демонстрация BiteOS. Заказ останется только в этой вкладке до обновления страницы. Деньги не спишутся, на кухню он не поступит."
+                  : "Это демонстрация BiteOS. Заказ сохранится локально, деньги не спишутся и на кухню он не поступит."}
               </p>
             </div>
             {error && (
@@ -923,7 +932,9 @@ function App() {
             <p>
               Сумма: {money(order.quote.total)}
               <br />
-              Сохранено в BiteOS. Оплата не проводилась.
+              {IS_DEMO
+                ? "Демо в этой вкладке. Заказ не отправлен, оплата не проводилась."
+                : "Сохранено в BiteOS. Оплата не проводилась."}
             </p>
             <button className="primary full" onClick={reset}>
               Начать новый заказ

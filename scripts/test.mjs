@@ -8,3 +8,4 @@ await run(
   "services/recommender",
 );
 await run("pnpm", ["build"], "apps/kiosk");
+await run("pnpm", ["test"], "apps/kiosk");
