@@ -1,37 +1,34 @@
 # BiteOS
 
-**Есть идея. Есть бургер.** Демо доставки из ресторанов и фастфуда с отдельным умным меню для киосков самообслуживания и больших сенсорных экранов.
+**Restaurant ordering for a big touchscreen and a browser delivery demo.** BiteOS lets guests build a meal, compare combos, and choose relevant add-ons with the price visible before they confirm.
 
-В локальном киоске React показывает меню, Go рассчитывает и сохраняет заказы, Rust выбирает уместные допродажи. Демо доставки на публичной странице работает в браузере. Это запускаемый MVP с демонстрационными блюдами: фастфуд показан в рублях, кафе Roby’s — в турецких лирах.
+[![BiteOS restaurant ordering demo: kiosk, combos, and matching add-ons](apps/kiosk/public/images/biteos-social-preview.jpg)](https://safal207.github.io/biteos/)
 
-**[Открыть онлайн-демо BiteOS](https://safal207.github.io/biteos/)** — доставка, комбо, корзина и оформление демонстрационного заказа прямо в браузере.
+**[Try the live demo](https://safal207.github.io/biteos/)** · **[Open the kiosk](https://safal207.github.io/biteos/#kiosk)** · [Read in Russian](README.ru.md)
 
-В демо есть выбор между фастфудом и кафе Roby’s: покупатель открывает отдельное меню заведения, видит подходящие дополнения и оформляет демонстрационный заказ. Перед подтверждением BiteOS может предложить одно дополнение с точной ценой; после отказа — максимум один более дешёвый вариант. Ресторан настраивает пары «блюдо → дополнение» и видит демосчётчики показов, добавлений и отказов. На большом табло настройки работают для Bite Burger и блюд исходного каталога киоска; блюда, добавленные вручную, пока участвуют только в доставке. Ресторан также добавляет блюда и передаёт заказ, курьер забирает и отмечает доставку. При начале готовки в заказе запускается примерный обратный отсчёт; готовность ресторан подтверждает вручную. Исходный киоск доступен через пункт «Киоск» слева или по ссылке с `#kiosk`.
+[![Check BiteOS](https://github.com/safal207/biteos/actions/workflows/check.yml/badge.svg)](https://github.com/safal207/biteos/actions/workflows/check.yml) · [MIT license](LICENSE)
 
-Для Roby’s использованы отдельные позиции меню и фотографии из [исходного репозитория кафе](https://github.com/safal207/robys-coffee-house-demo): `src/products/menu-v1/` и `src/products/sets-v1/`. Механика подсказок вдохновлена его сценарием Smart Choice: помочь выбрать напиток и показать уместное сочетание, сохраняя видимую цену. В BiteOS это самостоятельное демонстрационное представление, а не подключение к кассе Roby’s или перенос всей логики Smart Choice. Логотип кафе не переносился. До коммерческого запуска владелец должен подтвердить права на фотографии и бренд, актуальные цены и наличие позиций — это также указано в [README источника](https://github.com/safal207/robys-coffee-house-demo#business-truth-checklist).
+## See it in action
 
-Доставка пока работает в одной вкладке: добавленные рестораны, блюда, правила предложений, демосчётчики и заказы не видны другим пользователям и сохраняются лишь до закрытия вкладки. Аккаунтов, оплаты, реальных курьеров и общего сервера нет. Адреса в демо вымышленные. Для настоящего сервиса нужны серверное хранение, авторизация ролей, адреса/геолокация, выплаты и интеграции с ресторанами.
+- **Guest:** choose a restaurant, browse its menu, build a cart, add or remove a matching side or drink, and see the exact extra cost. Discounted combo cards show their contents, separate-item price, and savings.
+- **Checkout:** accept one relevant add-on or decline it; a single cheaper alternative may follow. Nothing is added without the guest choosing it.
+- **Restaurant and courier:** try menu edits, offer rules, a preparation countdown, pickup, and delivery in a single-tab simulation.
+- **Kiosk:** use a touch-friendly menu with modifiers, combos, cart controls, and contextual suggestions. The local stack can save demo orders.
 
-Онлайн-демо на GitHub Pages работает без сервера. Киоск берёт каталог из того же JSON, а расчёт и правила допродаж повторены в отдельном браузерном адаптере. Демозаказы киоска существуют только в памяти вкладки до обновления страницы. Полный локальный вариант киоска использует Go и Rust.
+The live site has four sample restaurants, including Bite Burger and Roby's Coffee House. Fast-food prices are shown in ₽ and Roby's menu prices in ₺. The restaurant and courier screens are interactive demos, not connected to real businesses or drivers.
 
-## Что уже работает
+## How it works
 
-- Адаптивное меню: категории всегда слева, карточки блюд, полноэкранный режим. Боковое меню остаётся доступным при прокрутке, в том числе на узком экране.
-- Настройка блюда: добавки, исключение лука, комбо с фри и напитком.
-- Отдельный раздел «Комбо»: три набора, изображения всех компонентов, состав и сравнение с ценой по отдельности. Набор недоступен, если закончился гарнир или напиток.
-- Корзина: количество, удаление позиции, выбор «в зале» / «с собой».
-- Контекстные предложения: собрать бургер в комбо, дополнить недостающий напиток или гарнир. Уже добавленные компоненты комбо учитываются.
-- Короткий шаг с предложением перед оформлением: принять одно дополнение или отказаться; после отказа можно увидеть один более дешёвый вариант. Полная доплата и новый итог видны заранее.
-- Расчёт в целых копейках на сервере, проверка доступности блюд и допустимых добавок.
-- Демозаказ с номером, записью на диск и защитой от дублей при повторной отправке.
-- Автоматический сброс сессии через 3 минуты бездействия, предупреждение за 20 секунд.
-- Локальные изображения и шрифты: интерфейс не зависит от стороннего CDN после установки.
+| Surface | What runs |
+| --- | --- |
+| [GitHub Pages demo](https://safal207.github.io/biteos/) | React and a browser-only demo adapter. Its delivery data stays in the current tab; kiosk orders last until reload. |
+| Local kiosk | React + TypeScript frontend, Go API for catalog, quotes, and demo order storage, and a Rust service for deterministic suggestions. |
 
-**Демо не принимает оплату, не отправляет заказ на кухню и не печатает чек.** Цены, изображения, состав и пищевая ценность иллюстративные. Перед пилотом каталог нужно заменить данными ресторана.
+Go is the source of truth for kiosk prices. Rust reads the current catalog and proposes suitable items; it does not set prices. If the recommendation service is unavailable, local ordering still works without suggestions. The rules are explainable and do not use an LLM or personal data.
 
-## Быстрый старт
+## Run locally
 
-Нужны Node.js 24+, pnpm 11.19.0, Go 1.21+ и Rust 1.93+ с рабочим системным линкером.
+Install Node.js 24+, pnpm 11.19.0, Go 1.21+, and Rust 1.93+ with a working system linker. From the repository root:
 
 ```sh
 corepack enable
@@ -40,115 +37,29 @@ pnpm --dir apps/kiosk install --frozen-lockfile
 node scripts/dev.mjs
 ```
 
-Открыть **http://127.0.0.1:5173**. Первый запуск компилирует Rust и Go; дождитесь готовности трёх сервисов. Ctrl+C останавливает их вместе.
+Open **http://127.0.0.1:5173** after the three services start. The first Rust build can take a while. On Windows, use the Rust MSVC toolchain and Visual Studio C++ Build Tools; [the Russian guide](README.ru.md#быстрый-старт) includes a session-only toolchain example. You can also run `docker compose up --build` and open **http://127.0.0.1:8090**.
 
-На Windows рекомендуется Rust MSVC и Visual Studio Build Tools с компонентом Desktop development with C++. При уже установленном MSVC toolchain можно выбрать его только для этой сессии:
-
-```powershell
-$env:RUSTUP_TOOLCHAIN = 'stable-x86_64-pc-windows-msvc'
-node scripts/dev.mjs
-```
-
-Каждый сервис можно запустить отдельно из своей директории:
-
-```sh
-# services/recommender
-cargo run --locked
-# services/api
-go run .
-# apps/kiosk
-pnpm dev
-```
-
-## Сборка и проверки
+Run the project checks and build with:
 
 ```sh
 node scripts/test.mjs
 node scripts/build.mjs
 ```
 
-Проверяются цены, скидки и количества, запрещённые добавки, доступность, повторные и конкурентные запросы, восстановление заказов после перезапуска, HTTP-валидация, работа без сервиса рекомендаций и правила Rust. React проходит строгую проверку TypeScript и production-сборку. В GitHub Actions дополнительно запускается Go race detector.
+The test script checks the Go API, Rust rules, React type/build output, and frontend behavior. CI also runs Go's race detector. For a browser-only preview, run `pnpm --dir apps/kiosk build:pages`; the published version is built from `main` by [GitHub Actions](.github/workflows/pages.yml).
 
-Для запуска собранного приложения запустите бинарник Rust из `services/recommender/target/release/`, а затем Go-бинарник из `bin/` с рабочей директорией `services/api`. Go раздаёт собранный React на **http://127.0.0.1:8090**.
-
-## Публичная страница
-
-GitHub Actions публикует страницу из `main` через `.github/workflows/pages.yml`. В настройках репозитория **Settings → Pages → Source** выбран **GitHub Actions**.
-
-```sh
-pnpm --dir apps/kiosk test
-pnpm --dir apps/kiosk build:pages
-pnpm --dir apps/kiosk exec vite preview --mode pages --host 127.0.0.1
-```
-
-Статическая сборка находится в `apps/kiosk/dist-pages`, путь страницы — `/biteos/`. Обычный `pnpm build` собирает приложение для Go в `dist`; при открытии киоска он использует Go API. Демоадаптер киоска включён только в сборку для Pages. Если репозиторий переименован, обновите `base` в `vite.config.ts`.
-
-## Docker
-
-```sh
-docker compose up --build
-```
-
-Открыть **http://127.0.0.1:8090**. Данные заказов сохраняются в именованном томе `orders`. Rust доступен только внутри сети Compose. Опубликованный порт по умолчанию привязан к loopback.
-
-## Устройство проекта
+## Project map
 
 ```text
-apps/kiosk/              React + TypeScript + Vite, интерфейс киоска
-services/api/            Go, каталог, расчёт, сохранение заказов, раздача React
-services/recommender/    Rust + Axum, правила допродаж
-scripts/                общий запуск, сборка и проверки
-docs/                   границы MVP и продуктовые эксперименты
+apps/kiosk/             React UI for delivery and kiosk
+services/api/           Go catalog, pricing, and local demo orders
+services/recommender/   Rust suggestion rules
+scripts/                Development, checks, and build
+docs/                   Product scope and asset provenance
 ```
 
-```mermaid
-flowchart LR
-  K[React: киоск] -->|меню, корзина, заказ| A[Go API]
-  A --> C[Каталог и расчёт цены]
-  A -->|корзина и каталог| R[Rust: рекомендации]
-  A --> S[(Локальные демозаказы)]
-```
+This is a working prototype, **not a production POS or delivery service**. The public demo has no shared server, accounts, payments, real dispatch, or cross-device order state. The local JSON order store is for a single-process demo, not a live restaurant. Prices, addresses, timing, and menu availability are illustrative. Read the [product scope](docs/product.md) and [full Russian guide](README.ru.md) for the boundaries and API details.
 
-Go — единственный источник цены. Клиент отправляет только идентификаторы, модификаторы, количество и режим выдачи. Rust получает текущий каталог от Go: отдельной копии цен в нём нет. При недоступности Rust меню и оформление продолжают работать, блок предложений скрывается.
+## Contribute and reuse
 
-Правила Rust детерминированы и объяснимы, без LLM и персональных данных. Сначала рассматривается комбо для бургера без гарнира и напитка, затем недостающие категории. Недоступные товары и уже присутствующие компоненты исключаются. Показываются максимум два предложения.
-
-## API
-
-- `GET /api/health` — доступность Go API.
-- `GET /api/menu` — каталог; денежные значения в копейках.
-- `POST /api/quote` — пересчитать корзину; пустая корзина допустима.
-- `POST /api/recommendations` — предложения Rust или пустой список при недоступности.
-- `POST /api/orders` — оформить демозаказ; обязателен заголовок `Idempotency-Key` длиной 8–128 символов.
-
-Тело запросов с корзиной:
-
-```json
-{
-  "mode": "dine-in",
-  "items": [
-    {
-      "productId": "smash",
-      "quantity": 1,
-      "optionIds": ["cheese"],
-      "combo": true
-    }
-  ]
-}
-```
-
-Одна такая позиция стоит 596 ₽: 349 + 39 + 149 + 129 − 70. Указанная скидка применяется на каждую порцию комбо. Переданное клиентом поле цены будет отклонено. Количество: 1–20 на строку, до 50 порций на заказ.
-
-Первое оформление возвращает `201`, идентичный повтор с тем же ключом — тот же заказ и `200`, другой заказ с использованным ключом — `409`. Ответ подтверждается только после записи на диск. Повторная отправка из интерфейса сохраняет ключ до изменения корзины.
-
-Настройки окружения Go: `ADDR` (по умолчанию `127.0.0.1:8090`), `ENGINE_URL` (`http://127.0.0.1:8091`), `ORDER_STORE` (`data/orders.json`), `WEB_DIR` (`../../apps/kiosk/dist`). Для Rust: `ENGINE_ADDR` (`127.0.0.1:8091`). Пути по умолчанию считаются от рабочей директории сервиса.
-
-Каталог находится в `services/api/catalog.json` и встраивается в Go-бинарник при сборке. После изменения каталога пересоберите / перезапустите Go.
-
-## Границы MVP
-
-Это прототип для разработки и демонстрации, а не готовая кассовая система. Нет авторизации терминала, полноценной админ-панели, фискализации, эквайринга, интеграции с POS/KDS, учёта остатков и аналитики реальных продаж. Локальные счётчики предложений показывают поведение только в этой вкладке, а не общие результаты ресторана. Локальное JSON-хранилище рассчитано на один процесс и небольшой объём: для пилота нужна транзакционная БД, миграции, резервное копирование, серверные сессии и контроль доступа. Идемпотентность защищает от повторной отправки, но не заменяет оплату или авторизацию.
-
-Код публичный. Лицензия распространения пока не выбрана владельцем.
-
-Подробнее: [направление продукта](docs/product.md), [источник изображений](docs/assets.md).
+Issues and focused pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) has setup and check commands. Original BiteOS code is [MIT-licensed](LICENSE). Roby's photos and other third-party assets are **not covered by that grant**; see [NOTICE.md](NOTICE.md) and [asset provenance](docs/assets.md) before reusing media or brand material.
