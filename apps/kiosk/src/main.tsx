@@ -285,6 +285,9 @@ function App() {
     fingerprint: string;
     values: Offer[];
   } | null>(null);
+  const [addedPairings, setAddedPairings] = useState<
+    { offer: Offer; anchorId: string }[]
+  >([]);
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState(false);
   const [offerGate, setOfferGate] = useState<KioskOfferGate | null>(null);
@@ -342,6 +345,7 @@ function App() {
   }, [toast]);
   function reset() {
     setItems([]);
+    setAddedPairings([]);
     setSelected(null);
     setCheckout(false);
     setOfferGate(null);
@@ -420,13 +424,31 @@ function App() {
         ),
       );
       setToast("Готово! Теперь это комбо.");
-    } else
+    } else {
+      const configuredTriggerId = (offer as Offer & { triggerId?: string })
+        .triggerId;
+      const anchorId =
+        configuredTriggerId ??
+        (catalog?.products.find((product) => product.id === offer.productId)
+          ?.category === "burgers"
+          ? items[0]?.productId
+          : items.find(
+              (item) =>
+                catalog?.products.find((product) => product.id === item.productId)
+                  ?.category === "burgers",
+            )?.productId ?? items[0]?.productId);
+      if (anchorId)
+        setAddedPairings((previous) => [
+          ...previous.filter((entry) => entry.offer.productId !== offer.productId),
+          { offer, anchorId },
+        ]);
       add({
         productId: offer.productId,
         quantity: 1,
         optionIds: [],
         combo: false,
       });
+    }
   }
   async function openCheckout() {
     if (!catalog || !quote || !items.length || gateLoading) return;
@@ -675,6 +697,24 @@ function App() {
           currentOffers,
         )
       : [];
+  const selectedPairings = addedPairings
+    .filter(
+      ({ offer, anchorId }) =>
+        items.some((item) => item.productId === offer.productId) &&
+        items.some((item) => item.productId === anchorId),
+    )
+    .map(({ offer }) => offer);
+  const shownOffers = [
+    ...selectedPairings,
+    ...visibleOffers.filter(
+      (offer) =>
+        !selectedPairings.some(
+          (selected) =>
+            selected.kind === offer.kind &&
+            selected.productId === offer.productId,
+        ),
+    ),
+  ].slice(0, 3);
 
   return (
     <div className="app-shell">
@@ -807,7 +847,7 @@ function App() {
           <div className="product-grid">
             {products.map((p) => (
               <button
-                className="product-card"
+                className={`product-card ${category === "combo" ? "combo-card" : ""}`}
                 key={p.id}
                 disabled={
                   !p.available || (category === "combo" && !comboAvailable)
@@ -826,11 +866,15 @@ function App() {
                         : p.badge}
                   </span>
                   {category === "combo" ? (
-                    <ComboFood
-                      product={p}
-                      side={comboSide}
-                      drink={comboDrink}
-                    />
+                    <>
+                      <span className="combo-art-ring" aria-hidden="true" />
+                      <ComboFood
+                        product={p}
+                        side={comboSide}
+                        drink={comboDrink}
+                      />
+                      <span className="combo-art-caption">ТРИ ВКУСА · ОДИН ВЫБОР</span>
+                    </>
                   ) : (
                     <Food index={p.image} />
                   )}
@@ -848,6 +892,13 @@ function App() {
                       ? `${p.name}, ${comboSide.name.toLowerCase()} ${comboSide.weight} и ${comboDrink.name.toLowerCase()} ${comboDrink.weight}.`
                       : p.description}
                   </p>
+                  {category === "combo" && (
+                    <div className="combo-card-parts" aria-label="Состав комбо">
+                      <span>{p.name}</span>
+                      <span>{comboSide.name}</span>
+                      <span>{comboDrink.name}</span>
+                    </div>
+                  )}
                   <div className="card-bottom">
                     <div className="card-price">
                       {category === "combo" && (
@@ -867,6 +918,11 @@ function App() {
                       <Plus size={22} />
                     </span>
                   </div>
+                  {category === "combo" && (
+                    <span className="combo-card-action">
+                      Собрать комбо <ArrowUpRight size={16} aria-hidden="true" />
+                    </span>
+                  )}
                 </div>
               </button>
             ))}
@@ -952,6 +1008,51 @@ function App() {
                           ? ` · ${extras.map((o) => o.name).join(", ")}`
                           : ""}
                       </p>
+                      {item.combo && (
+                        <button
+                          className="cart-combo-remove"
+                          type="button"
+                          aria-label={`Убрать комбо из позиции ${p.name}`}
+                          onClick={() =>
+                            setItems((previous) => {
+                              const source = previous[index];
+                              if (!source?.combo) return previous;
+                              let remaining = source.quantity;
+                              const next: Item[] = [];
+                              for (const [entryIndex, entry] of previous.entries()) {
+                                if (entryIndex === index) continue;
+                                if (
+                                  remaining > 0 &&
+                                  !entry.combo &&
+                                  entry.quantity < 20 &&
+                                  entry.productId === source.productId &&
+                                  JSON.stringify(entry.optionIds) ===
+                                    JSON.stringify(source.optionIds)
+                                ) {
+                                  const moved = Math.min(
+                                    remaining,
+                                    20 - entry.quantity,
+                                  );
+                                  remaining -= moved;
+                                  next.push({
+                                    ...entry,
+                                    quantity: entry.quantity + moved,
+                                  });
+                                } else next.push(entry);
+                              }
+                              if (remaining > 0)
+                                next.splice(Math.min(index, next.length), 0, {
+                                  ...source,
+                                  quantity: remaining,
+                                  combo: false,
+                                });
+                              return next;
+                            })
+                          }
+                        >
+                          Убрать фри + колу
+                        </button>
+                      )}
                       <div className="cart-item-bottom">
                         <div className="quantity">
                           <button
@@ -977,34 +1078,110 @@ function App() {
               })}
             </div>
           )}
-          {visibleOffers.length > 0 && (
+          {shownOffers.length > 0 && (
             <section className="recommendations">
-              <span className="eyebrow">
-                <Sparkles size={13} /> К ТВОЕМУ ЗАКАЗУ
-              </span>
-              {visibleOffers.map((offer, index) => {
+              <div className="recommendations-heading">
+                <span className="eyebrow">
+                  <Sparkles size={13} /> ВКУСНО ВМЕСТЕ
+                </span>
+                <h3>Подойдёт к заказу</h3>
+                <p>Добавь к любимому блюду идеальную пару.</p>
+              </div>
+              {shownOffers.map((offer, index) => {
                 const p = catalog.products.find(
                   (p) => p.id === offer.productId,
                 )!;
+                const selectedIndex =
+                  offer.kind === "add"
+                    ? items.findIndex(
+                        (item) =>
+                          item.productId === offer.productId &&
+                          !item.combo &&
+                          item.optionIds.length === 0,
+                      )
+                    : -1;
+                const selectedQuantity =
+                  selectedIndex >= 0 ? items[selectedIndex].quantity : 0;
+                const comboQuantity =
+                  offer.kind === "combo" && offer.itemIndex !== null
+                    ? (items[offer.itemIndex]?.quantity ?? 1)
+                    : 1;
                 return (
-                  <button
-                    className="offer"
-                    key={index}
-                    onClick={() => acceptOffer(offer)}
+                  <article
+                    className={`offer-card ${selectedQuantity ? "offer-card-selected" : ""}`}
+                    key={`${offer.kind}-${offer.productId}-${offer.itemIndex ?? index}`}
                   >
-                    <Food index={offer.kind === "combo" ? 3 : p.image} />
-                    <div>
-                      <b>
-                        {offer.kind === "combo" ? "Собрать в комбо" : p.name}
-                      </b>
-                      <small>{offer.reason}</small>
-                      <strong>
-                        + {money(offer.price)}
-                        {offer.kind === "combo" ? " / порция" : ""}
-                      </strong>
+                    <div className="offer-card-art">
+                      {offer.kind === "combo" ? (
+                        <ComboFood
+                          product={p}
+                          side={comboSide}
+                          drink={comboDrink}
+                        />
+                      ) : (
+                        <Food index={p.image} />
+                      )}
+                      <span>{offer.kind === "combo" ? "КОМБО" : "К ЗАКАЗУ"}</span>
                     </div>
-                    <Plus size={18} />
-                  </button>
+                    <div className="offer-card-content">
+                      <div className="offer-card-title">
+                        <h4>
+                          {offer.kind === "combo"
+                            ? `${p.name} + фри + кола`
+                            : p.name}
+                        </h4>
+                        <strong>
+                          +{money(
+                            offer.kind === "combo"
+                              ? offer.price * comboQuantity
+                              : p.price,
+                          )}
+                        </strong>
+                      </div>
+                      <p>{offer.reason}</p>
+                      {offer.kind === "combo" && comboQuantity > 1 && (
+                        <small>Доплата за {comboQuantity} порции</small>
+                      )}
+                      {selectedQuantity ? (
+                        <div className="offer-card-controls">
+                          <span>
+                            <Check size={14} aria-hidden="true" /> В заказе
+                          </span>
+                          <div className="offer-quantity" aria-label={`Количество ${p.name}`}>
+                            <button
+                              type="button"
+                              aria-label={`Убрать одну порцию ${p.name}`}
+                              onClick={() => changeQuantity(selectedIndex, -1)}
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <b>{selectedQuantity}</b>
+                            <button
+                              type="button"
+                              aria-label={`Добавить порцию ${p.name}`}
+                              disabled={selectedQuantity >= 20 || count >= 50}
+                              onClick={() => changeQuantity(selectedIndex, 1)}
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          className="offer-card-add"
+                          type="button"
+                          aria-label={`${offer.kind === "combo" ? "Собрать комбо" : "Добавить к заказу"}: ${p.name}, +${money(offer.kind === "combo" ? offer.price * comboQuantity : p.price)}`}
+                          disabled={offer.kind === "add" && count >= 50}
+                          onClick={() => acceptOffer(offer)}
+                        >
+                          <span>
+                            {offer.kind === "combo" ? "Собрать комбо" : "Добавить к заказу"}
+                          </span>
+                          <Plus size={17} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  </article>
                 );
               })}
             </section>

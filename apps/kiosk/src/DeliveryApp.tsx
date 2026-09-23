@@ -34,6 +34,7 @@ import { readKioskOfferEvents } from "./kioskOfferFlow";
 import type { ChoiceAnswers } from "./robysChoice";
 import type {
   CartLine,
+  CheckoutOffer,
   Cuisine,
   DeliveryOrder,
   Dish,
@@ -82,7 +83,7 @@ const preparationPresets = [5, 8, 10, 12, 15, 18, 20, 25, 30, 45, 60, 90, 120];
 const menuSections = (restaurant: Restaurant) => {
   const sections: { title: string; dishes: Dish[] }[] = [];
   for (const dish of restaurant.dishes) {
-    const title = dish.section ?? "";
+    const title = dish.section ?? (dish.components ? "Комбо" : "");
     let section = sections.find((item) => item.title === title);
     if (!section) {
       section = { title, dishes: [] };
@@ -118,6 +119,22 @@ function Food({
       style={dishImage()}
       aria-hidden="true"
     />
+  );
+}
+
+function ComboVisual({ restaurant, dish }: { restaurant: Restaurant; dish: Dish }) {
+  const parts = (dish.components ?? [])
+    .map((id) => restaurant.dishes.find((item) => item.id === id))
+    .filter((item): item is Dish => Boolean(item))
+    .slice(0, 3);
+  return (
+    <div className="delivery-combo-visual" aria-hidden="true">
+      {parts.map((part, index) => (
+        <div className={`delivery-combo-visual-item part-${index + 1}`} key={part.id}>
+          <Food image={part.image} photo={part.photo} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -362,6 +379,21 @@ export function DeliveryApp() {
     () => (cartRestaurant && quote ? checkoutOffers(cartRestaurant, cart) : []),
     [cartRestaurant, cart, quote],
   );
+  const pairedOffers = useMemo(() => {
+    if (!cartRestaurant || !quote) return [];
+    const pairs = new Map<string, CheckoutOffer>();
+    for (const line of cart) {
+      const withoutLine = cart.filter((item) => item.productId !== line.productId);
+      const existingPair = checkoutOffers(cartRestaurant, withoutLine).find(
+        (candidate) => candidate.dish.id === line.productId,
+      );
+      if (existingPair) pairs.set(existingPair.dish.id, existingPair);
+    }
+    for (const candidate of checkoutCandidates) {
+      if (!pairs.has(candidate.dish.id)) pairs.set(candidate.dish.id, candidate);
+    }
+    return [...pairs.values()].slice(0, 2);
+  }, [cartRestaurant, cart, quote, checkoutCandidates]);
   const activeCheckoutOffer =
     offerSession?.cartKey === currentCartKey
       ? checkoutCandidates.find((candidate) =>
@@ -1309,6 +1341,11 @@ export function DeliveryApp() {
                       {section.dishes.map((dish) => {
                         const available =
                           selected.open && dishAvailable(selected, dish);
+                        const comboParts = (dish.components ?? [])
+                          .map((id) => selected.dishes.find((item) => item.id === id))
+                          .filter((item): item is Dish => Boolean(item));
+                        const isCombo = comboParts.length > 0;
+                        const hasSavings = isCombo && (dish.discount ?? 0) > 0;
                         const quantity =
                           selected.id === cartRestaurantId
                             ? (cart.find((line) => line.productId === dish.id)
@@ -1316,28 +1353,49 @@ export function DeliveryApp() {
                             : 0;
                         return (
                           <article
-                            className={`delivery-dish ${available ? "" : "unavailable"}`}
+                            className={`delivery-dish ${isCombo ? "delivery-combo-card" : ""} ${available ? "" : "unavailable"}`}
                             key={dish.id}
                           >
                             <div className="delivery-dish-image">
-                              <Food image={dish.image} photo={dish.photo} />
-                              {dish.components && (dish.discount ?? 0) > 0 && (
+                              {isCombo ? (
+                                <ComboVisual restaurant={selected} dish={dish} />
+                              ) : (
+                                <Food image={dish.image} photo={dish.photo} />
+                              )}
+                              {hasSavings && (
                                 <span className="delivery-combo-tag">
-                                  КОМБО · −
+                                  ВЫГОДА −
                                   {money(dish.discount ?? 0, selected.currency)}
                                 </span>
                               )}
                             </div>
                             <div className="delivery-dish-info">
+                              {isCombo && (
+                                <span className="delivery-combo-eyebrow">
+                                  {hasSavings ? "КОМБО" : "СЕТ"} · ВСЁ ВМЕСТЕ
+                                </span>
+                              )}
                               <h3>{dish.name}</h3>
                               <p>{dish.description}</p>
+                              {isCombo && (
+                                <div className="delivery-combo-parts" aria-label="Состав набора">
+                                  {comboParts.map((part) => (
+                                    <span key={part.id}>{part.name}</span>
+                                  ))}
+                                </div>
+                              )}
                               <div className="delivery-dish-bottom">
-                                <strong>
-                                  {money(
-                                    dishPrice(selected, dish),
-                                    selected.currency,
+                                <div className="delivery-dish-price">
+                                  {hasSavings && (
+                                    <del>
+                                      {money(
+                                        comboParts.reduce((sum, part) => sum + dishPrice(selected, part), 0),
+                                        selected.currency,
+                                      )}
+                                    </del>
                                   )}
-                                </strong>
+                                  <strong>{money(dishPrice(selected, dish), selected.currency)}</strong>
+                                </div>
                                 {available ? (
                                   quantity ? (
                                     <div className="delivery-stepper">
@@ -1361,13 +1419,14 @@ export function DeliveryApp() {
                                     </div>
                                   ) : (
                                     <button
-                                      className="delivery-add"
+                                      className={`delivery-add ${isCombo ? "delivery-combo-add" : ""}`}
                                       onClick={() =>
                                         changeCart(selected, dish, 1)
                                       }
                                       aria-label={`Добавить ${dish.name}`}
                                     >
                                       <Plus size={20} />
+                                      {isCombo && <span>В заказ</span>}
                                     </button>
                                   )
                                 ) : (
@@ -1417,54 +1476,97 @@ export function DeliveryApp() {
                     );
                     if (!dish) return null;
                     return (
-                      <div className="delivery-cart-line" key={line.productId}>
+                      <article className="delivery-cart-line" key={line.productId}>
                         <Food image={dish.image} photo={dish.photo} />
-                        <div>
+                        <div className="delivery-cart-line-copy">
                           <strong>{dish.name}</strong>
                           <span>
-                            {line.quantity} ×{" "}
-                            {money(
-                              dishPrice(cartRestaurant, dish),
-                              cartRestaurant.currency,
-                            )}
+                            {money(dishPrice(cartRestaurant, dish), cartRestaurant.currency)} за порцию
                           </span>
                         </div>
-                        <button
-                          aria-label={`Убрать ${dish.name}`}
-                          onClick={() => changeCart(cartRestaurant, dish, -1)}
-                        >
-                          <Minus size={15} />
-                        </button>
-                      </div>
+                        <div className="delivery-cart-line-bottom">
+                          <strong>{money(dishPrice(cartRestaurant, dish) * line.quantity, cartRestaurant.currency)}</strong>
+                          <div className="delivery-stepper">
+                            <button
+                              aria-label={`Убрать ${dish.name}`}
+                              onClick={() => changeCart(cartRestaurant, dish, -1)}
+                            >
+                              <Minus size={15} />
+                            </button>
+                            <b>{line.quantity}</b>
+                            <button
+                              aria-label={`Добавить ${dish.name}`}
+                              onClick={() => changeCart(cartRestaurant, dish, 1)}
+                            >
+                              <Plus size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
                 {offer && (
-                  <button className="delivery-upsell" onClick={takeCombo}>
-                    <Sparkles size={19} />
-                    <span>
-                      <strong>
-                        {offerQuantity === 1
-                          ? "Сделать комбо?"
-                          : `Комбо для ${plural(offerQuantity, ["порции", "порций", "порций"])}?`}
-                      </strong>
-                      <small>
-                        Фри + кола к каждой порции · экономия{" "}
-                        {money(
-                          offer.combo.discount ?? 0,
-                          cartRestaurant.currency,
-                        )}{" "}
-                        за порцию
-                      </small>
-                    </span>
-                    <b>
-                      +
-                      {money(
-                        offer.extra * offerQuantity,
-                        cartRestaurant.currency,
-                      )}
-                    </b>
-                  </button>
+                  <section className="delivery-upsell" aria-label="Предложение комбо">
+                    <div className="delivery-upsell-top">
+                      <div className="delivery-upsell-media">
+                        <Food image={offer.combo.image} photo={offer.combo.photo} />
+                      </div>
+                      <div>
+                        <span className="delivery-upsell-kicker"><Sparkles size={13} /> СОБРАТЬ В КОМБО</span>
+                        <h3>{offer.combo.name}</h3>
+                        <p>
+                          {offer.combo.components?.slice(1).map((id) =>
+                            cartRestaurant.dishes.find((dish) => dish.id === id)?.name,
+                          ).filter(Boolean).join(" + ")} к каждой порции
+                        </p>
+                      </div>
+                    </div>
+                    <div className="delivery-upsell-deal">
+                      <span>Экономия {money((offer.combo.discount ?? 0) * offerQuantity, cartRestaurant.currency)}</span>
+                      <strong>+{money(offer.extra * offerQuantity, cartRestaurant.currency)}</strong>
+                    </div>
+                    <button onClick={takeCombo}>
+                      {offerQuantity === 1 ? "Заменить на комбо" : `Заменить ${plural(offerQuantity, ["порцию", "порции", "порций"])} на комбо`}
+                      <ArrowRight size={16} />
+                    </button>
+                  </section>
+                )}
+                {!checkout && !activeCheckoutOffer && pairedOffers.length > 0 && (
+                  <section className="delivery-pair-section" aria-label="Подходящие дополнения">
+                    <div className="delivery-pair-heading">
+                      <span><Sparkles size={15} /> СОЧЕТАЕТСЯ С ЗАКАЗОМ</span>
+                      <p>Добавь к блюду или убери одним нажатием.</p>
+                    </div>
+                    <div className="delivery-pair-grid">
+                      {pairedOffers.map((candidate) => {
+                        const quantity = cart.find((line) => line.productId === candidate.dish.id)?.quantity ?? 0;
+                        return (
+                          <article className={`delivery-pair-card ${quantity ? "is-added" : ""}`} key={candidate.dish.id}>
+                            <div className="delivery-pair-media" aria-hidden="true">
+                              <Food image={candidate.trigger.image} photo={candidate.trigger.photo} />
+                              <span><Plus size={15} /></span>
+                              <Food image={candidate.dish.image} photo={candidate.dish.photo} />
+                            </div>
+                            <small>К «{candidate.trigger.name}» подойдёт</small>
+                            <h3>{candidate.dish.name}</h3>
+                            <div className="delivery-pair-foot">
+                              <strong>+{money(candidate.price, cartRestaurant.currency)}</strong>
+                              {quantity ? (
+                                <div className="delivery-stepper">
+                                  <button aria-label={`Убрать ${candidate.dish.name}`} onClick={() => changeCart(cartRestaurant, candidate.dish, -1)}><Minus size={14} /></button>
+                                  <b>{quantity}</b>
+                                  <button aria-label={`Добавить ${candidate.dish.name}`} onClick={() => changeCart(cartRestaurant, candidate.dish, 1)}><Plus size={14} /></button>
+                                </div>
+                              ) : (
+                                <button className="delivery-pair-add" onClick={() => changeCart(cartRestaurant, candidate.dish, 1)} aria-label={`Добавить ${candidate.dish.name}`}><Plus size={15} /> Добавить</button>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
                 )}
                 {quote ? (
                   <>
@@ -1551,15 +1653,16 @@ export function DeliveryApp() {
                             ? "ЕЩЁ ОДИН ВАРИАНТ"
                             : "ПОДОЙДЁТ К ЗАКАЗУ"}
                         </span>
-                        <h3>Добавить к «{activeCheckoutOffer.trigger.name}»?</h3>
+                        <h3>Хорошая пара к «{activeCheckoutOffer.trigger.name}»</h3>
                         <div className="delivery-checkout-offer-dish">
-                          <Food
-                            image={activeCheckoutOffer.dish.image}
-                            photo={activeCheckoutOffer.dish.photo}
-                          />
+                          <div className="delivery-checkout-pair-media" aria-hidden="true">
+                            <Food image={activeCheckoutOffer.trigger.image} photo={activeCheckoutOffer.trigger.photo} />
+                            <span><Plus size={15} /></span>
+                            <Food image={activeCheckoutOffer.dish.image} photo={activeCheckoutOffer.dish.photo} />
+                          </div>
                           <div>
                             <strong>{activeCheckoutOffer.dish.name}</strong>
-                            <small>1 порция · можно пропустить</small>
+                            <small>К {activeCheckoutOffer.trigger.name} · 1 порция · по желанию</small>
                           </div>
                         </div>
                         <div className="delivery-checkout-offer-prices">
@@ -2265,7 +2368,7 @@ export function DeliveryApp() {
                 <section className="delivery-offer-analytics delivery-panel">
                   <div>
                     <span className="delivery-kicker">ДЕМОСТАТИСТИКА ЭТОЙ ВКЛАДКИ</span>
-                    <h3>Предложения доставки · {manager.name}</h3>
+                    <h3>Предложения перед оформлением · {manager.name}</h3>
                   </div>
                   <div className="delivery-offer-stats">
                     <div><span>Показано</span><strong>{offerStat("shown")}</strong></div>
@@ -2281,8 +2384,9 @@ export function DeliveryApp() {
                     </div>
                   </div>
                   <p className="delivery-demo-hint">
-                    Показ — появление предложения, добавление — выбор гостя.
-                    Это не оплаченные продажи. История включает удалённые пары.
+                    Здесь учтены предложения на шаге оформления. Карточки
+                    сочетаний в корзине в эти счётчики не входят. Это не
+                    оплаченные продажи. История включает удалённые пары.
                   </p>
                 </section>
                 {manager.id === "bite-burger" && (
