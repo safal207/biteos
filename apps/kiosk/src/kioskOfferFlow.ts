@@ -139,7 +139,7 @@ export function readConfiguredKioskOffers(
         triggerId: rule.triggerId,
         productId: addOn.id,
         kind: "add",
-        reason: `Пара от Bite Burger к «${trigger.name}»`,
+        reason: `Дополнит блюдо «${trigger.name}»`,
         price: addOn.price,
         score: 1_000,
         itemIndex: null,

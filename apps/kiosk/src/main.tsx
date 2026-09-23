@@ -1085,7 +1085,7 @@ function App() {
             <h2>
               {offerGate.active.offer.kind === "combo"
                 ? "Сделаем комбо?"
-                : `Добавим ${gateProduct.name.toLowerCase()}?`}
+                : `Добавить «${gateProduct.name}»?`}
             </h2>
             <div className="checkout-offer-art">
               {offerGate.active.offer.kind === "combo" ? (
