@@ -1,11 +1,22 @@
 import catalog from "../../../services/api/catalog.json" with { type: "json" };
 
-export type Cuisine = "burgers" | "chicken" | "grill" | "other";
+export type Cuisine = "burgers" | "chicken" | "grill" | "cafe" | "other";
 export const cuisines: Record<Cuisine, string> = {
   burgers: "Бургеры",
   chicken: "Курица",
   grill: "Гриль",
+  cafe: "Кофейня",
   other: "Другая кухня",
+};
+export type Currency = "RUB" | "TRY";
+export type ChoiceIntent =
+  "coffee" | "breakfast" | "snack" | "dessert" | "refresh";
+export type ChoiceTraits = {
+  intents: ChoiceIntent[];
+  temperature: "hot" | "cold" | "none";
+  taste: "sweet" | "neutral" | "savoury";
+  partySizes: ("one" | "two" | "family")[];
+  sourceStatus: "confirmed" | "provisional";
 };
 export type Dish = {
   id: string;
@@ -16,12 +27,18 @@ export type Dish = {
   available: boolean;
   components?: string[];
   discount?: number;
+  fixedPrice?: number;
+  photo?: string;
+  section?: string;
+  choice?: ChoiceTraits;
 };
 export type Restaurant = {
   id: string;
   name: string;
   description: string;
   cuisine: Cuisine;
+  currency: Currency;
+  photo?: string;
   address: string;
   deliveryFee: number;
   minimum: number;
@@ -60,6 +77,7 @@ export type DeliveryOrder = {
   number: number;
   restaurantId: string;
   restaurantName: string;
+  currency: Currency;
   pickup: string;
   address: string;
   note: string;
@@ -77,6 +95,13 @@ export type DeliveryState = {
   restaurants: Restaurant[];
   orders: DeliveryOrder[];
 };
+export type LegacyDeliveryState = Omit<
+  DeliveryState,
+  "restaurants" | "orders"
+> & {
+  restaurants: (Omit<Restaurant, "currency"> & { currency?: Currency })[];
+  orders: (Omit<DeliveryOrder, "currency"> & { currency?: Currency })[];
+};
 export type RestaurantInput = Pick<
   Restaurant,
   | "name"
@@ -86,7 +111,7 @@ export type RestaurantInput = Pick<
   | "deliveryFee"
   | "minimum"
   | "eta"
->;
+> & { currency?: Currency };
 export type DeliveryAction =
   | { type: "restaurant.add"; id: string; input: RestaurantInput }
   | { type: "restaurant.toggle"; restaurantId: string }
@@ -116,6 +141,180 @@ export type DeliveryAction =
       orderId: string;
     }
   | { type: "order.cancel"; orderId: string };
+
+const robyPhoto = (id: string) => `images/robys/menu-v1/${id}.webp`;
+const robyDish = (
+  id: string,
+  name: string,
+  lira: number,
+  section: string,
+  intents: ChoiceIntent[],
+  temperature: ChoiceTraits["temperature"],
+  taste: ChoiceTraits["taste"],
+  partySizes: ChoiceTraits["partySizes"] = ["one", "two"],
+): Dish => ({
+  id,
+  name,
+  description: "",
+  price: lira * 100,
+  image: 0,
+  available: true,
+  photo: robyPhoto(id),
+  section,
+  choice: {
+    intents,
+    temperature,
+    taste,
+    partySizes,
+    sourceStatus: "confirmed",
+  },
+});
+
+export function robyRestaurant(): Restaurant {
+  const dishes: Dish[] = [
+    robyDish(
+      "hot-coffee--flat-white",
+      "Флэт уайт",
+      170,
+      "Горячий кофе",
+      ["coffee", "breakfast"],
+      "hot",
+      "neutral",
+    ),
+    robyDish(
+      "hot-coffee--caffe-latte",
+      "Кафе латте",
+      180,
+      "Горячий кофе",
+      ["coffee", "breakfast", "snack"],
+      "hot",
+      "neutral",
+    ),
+    robyDish(
+      "hot-coffee--caramel-latte",
+      "Карамельный латте",
+      200,
+      "Горячий кофе",
+      ["coffee", "breakfast", "dessert"],
+      "hot",
+      "sweet",
+    ),
+    robyDish(
+      "brew-hot--filter-coffee",
+      "Фильтр-кофе",
+      160,
+      "Горячий кофе",
+      ["coffee", "breakfast", "snack"],
+      "hot",
+      "neutral",
+    ),
+    robyDish(
+      "cold-coffee--iced-caffe-latte",
+      "Айс латте",
+      180,
+      "Холодный кофе",
+      ["coffee", "breakfast", "snack", "refresh", "dessert"],
+      "cold",
+      "neutral",
+    ),
+    robyDish(
+      "refreshers--cool-lime",
+      "Cool Lime",
+      190,
+      "Холодные напитки",
+      ["refresh", "snack"],
+      "cold",
+      "sweet",
+      ["one", "two", "family"],
+    ),
+    robyDish(
+      "desserts--san-sebastian-cheesecake",
+      "Чизкейк Сан-Себастьян",
+      190,
+      "Десерты",
+      ["dessert", "snack"],
+      "none",
+      "sweet",
+    ),
+    robyDish(
+      "desserts--lotus-cheesecake",
+      "Чизкейк Lotus",
+      190,
+      "Десерты",
+      ["dessert", "snack"],
+      "none",
+      "sweet",
+    ),
+    robyDish(
+      "desserts--macaron",
+      "Макарон",
+      30,
+      "Десерты",
+      ["dessert", "snack"],
+      "none",
+      "sweet",
+      ["one", "two", "family"],
+    ),
+    robyDish(
+      "food--nutella-croissant",
+      "Круассан с Nutella",
+      170,
+      "Выпечка",
+      ["breakfast", "snack"],
+      "none",
+      "sweet",
+    ),
+    robyDish(
+      "food--sesame-simit",
+      "Симит с кунжутом",
+      35,
+      "Выпечка",
+      ["breakfast", "snack"],
+      "none",
+      "savoury",
+      ["one", "two", "family"],
+    ),
+    {
+      id: "combo-iced-san-sebastian",
+      name: "Айс-латте + чизкейк Сан-Себастьян",
+      description:
+        "1 айс-латте + 1 чизкейк Сан-Себастьян. Цена равна сумме позиций меню.",
+      price: 37000,
+      fixedPrice: 37000,
+      image: 0,
+      available: true,
+      components: [
+        "cold-coffee--iced-caffe-latte",
+        "desserts--san-sebastian-cheesecake",
+      ],
+      photo: "images/robys/sets-v1/iced-san-sebastian.webp",
+      section: "Сеты",
+      choice: {
+        intents: ["coffee", "dessert", "snack", "refresh"],
+        temperature: "cold",
+        taste: "sweet",
+        partySizes: ["one", "two"],
+        sourceStatus: "confirmed",
+      },
+    },
+  ];
+  return {
+    id: "robys-coffee-house",
+    name: "Roby's Coffee House",
+    description:
+      "Кофе и десерты из меню кафе в Газипаше. Заказ здесь — только демо.",
+    cuisine: "cafe",
+    currency: "TRY",
+    photo: robyPhoto("cold-coffee--iced-caffe-latte"),
+    address:
+      "Демо: Roby's Coffee House · Pazarcı, Uğur Mumcu Cd., Gazipaşa, Antalya",
+    deliveryFee: 0,
+    minimum: 0,
+    eta: 30,
+    open: true,
+    dishes,
+  };
+}
 
 export function initialDeliveryState(): DeliveryState {
   const dishes: Dish[] = catalog.products.map((p) => ({
@@ -147,6 +346,7 @@ export function initialDeliveryState(): DeliveryState {
         name: "Bite Burger",
         description: "Смэш-бургеры, щедрые комбо и тот самый хруст.",
         cuisine: "burgers",
+        currency: "RUB",
         address: "Демо: Бургерная улица, 12",
         deliveryFee: 9900,
         minimum: 25000,
@@ -159,6 +359,7 @@ export function initialDeliveryState(): DeliveryState {
         name: "Криспи Клаб",
         description: "Хрустящая курица. Наггетсы. Хороший повод собраться.",
         cuisine: "chicken",
+        currency: "RUB",
         address: "Демо: Хрустящий переулок, 7",
         deliveryFee: 7900,
         minimum: 19900,
@@ -177,6 +378,7 @@ export function initialDeliveryState(): DeliveryState {
         name: "BBQ Двор",
         description: "Бургеры с дымком, беконом и характером.",
         cuisine: "grill",
+        currency: "RUB",
         address: "Демо: Гриль-проспект, 5",
         deliveryFee: 11900,
         minimum: 34900,
@@ -188,7 +390,34 @@ export function initialDeliveryState(): DeliveryState {
           ),
         ),
       },
+      robyRestaurant(),
     ],
+  };
+}
+
+export function migrateDeliveryState(
+  stored: LegacyDeliveryState,
+): DeliveryState {
+  const restaurants = stored.restaurants.map((restaurant) => ({
+    ...restaurant,
+    currency: restaurant.currency ?? "RUB",
+  }));
+  if (
+    !restaurants.some((restaurant) => restaurant.id === "robys-coffee-house")
+  ) {
+    restaurants.push(robyRestaurant());
+  }
+  return {
+    version: 1,
+    restaurants,
+    orders: stored.orders.map((order) => ({
+      ...order,
+      currency:
+        order.currency ??
+        restaurants.find((restaurant) => restaurant.id === order.restaurantId)
+          ?.currency ??
+        "RUB",
+    })),
   };
 }
 
@@ -218,6 +447,7 @@ export function dishAvailable(restaurant: Restaurant, dish: Dish): boolean {
   );
 }
 export function dishPrice(restaurant: Restaurant, dish: Dish): number {
+  if (dish.fixedPrice !== undefined) return dish.fixedPrice;
   if (!dish.components) return dish.price;
   return Math.max(
     0,
@@ -274,7 +504,9 @@ export function comboOffer(restaurant: Restaurant, items: CartLine[]) {
   for (const [index, item] of items.entries()) {
     const combo = restaurant.dishes.find(
       (d) =>
-        d.components?.[0] === item.productId && dishAvailable(restaurant, d),
+        d.components?.[0] === item.productId &&
+        (d.discount ?? 0) > 0 &&
+        dishAvailable(restaurant, d),
     );
     if (
       !combo ||
@@ -310,6 +542,7 @@ export function applyDeliveryAction(
       name: text(i.name, 2, 60, "Название: от 2 до 60 символов"),
       description: text(i.description, 0, 180, "Описание: до 180 символов"),
       cuisine: i.cuisine,
+      currency: i.currency ?? "RUB",
       address: text(i.address, 5, 180, "Укажите адрес ресторана"),
       deliveryFee: amount(
         i.deliveryFee,
@@ -321,6 +554,12 @@ export function applyDeliveryAction(
       open: true,
       dishes: [],
     };
+    if (
+      i.currency !== undefined &&
+      i.currency !== "RUB" &&
+      i.currency !== "TRY"
+    )
+      throw new Error("Выберите валюту");
     state.restaurants.push(restaurant);
     return state;
   }
@@ -348,7 +587,7 @@ export function applyDeliveryAction(
         price: amount(
           action.input.price,
           10000000,
-          "Цена должна быть от 1 до 100 000 ₽",
+          `Цена должна быть от 1 до 100 000 ${restaurant.currency === "TRY" ? "₺" : "₽"}`,
           100,
         ),
         image: amount(action.input.image, 5, "Выберите иллюстрацию"),
@@ -372,6 +611,7 @@ export function applyDeliveryAction(
         number: Math.max(0, ...state.orders.map((o) => o.number)) + 1,
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
+        currency: restaurant.currency,
         pickup: restaurant.address,
         address: text(action.address, 5, 200, "Укажите улицу, дом и квартиру"),
         note: text(action.note, 0, 300, "Комментарий: до 300 символов"),

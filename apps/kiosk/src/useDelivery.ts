@@ -3,9 +3,14 @@ import {
   applyDeliveryAction,
   cuisines,
   initialDeliveryState,
+  migrateDeliveryState,
   statusLabels,
 } from "./delivery";
-import type { DeliveryAction, DeliveryState } from "./delivery";
+import type {
+  DeliveryAction,
+  DeliveryState,
+  LegacyDeliveryState,
+} from "./delivery";
 
 const key = "biteos-delivery-v1";
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -13,7 +18,11 @@ const object = (value: unknown): value is Record<string, unknown> =>
 const str = (value: unknown): value is string => typeof value === "string";
 const validMoney = (value: unknown) =>
   Number.isSafeInteger(value) && Number(value) >= 0;
-function validState(value: unknown): value is DeliveryState {
+const validCurrency = (value: unknown) => value === "RUB" || value === "TRY";
+const validPhoto = (value: unknown) =>
+  typeof value === "string" &&
+  /^images\/robys\/(?:menu-v1|sets-v1)\/[a-z0-9-]+\.webp$/.test(value);
+function validState(value: unknown): value is LegacyDeliveryState {
   if (
     !object(value) ||
     value.version !== 1 ||
@@ -30,6 +39,8 @@ function validState(value: unknown): value is DeliveryState {
       str(r.address) &&
       str(r.cuisine) &&
       Object.hasOwn(cuisines, r.cuisine) &&
+      (r.currency === undefined || validCurrency(r.currency)) &&
+      (r.photo === undefined || validPhoto(r.photo)) &&
       validMoney(r.deliveryFee) &&
       validMoney(r.minimum) &&
       validMoney(r.eta) &&
@@ -44,6 +55,28 @@ function validState(value: unknown): value is DeliveryState {
           validMoney(d.price) &&
           validMoney(d.image) &&
           typeof d.available === "boolean" &&
+          (d.photo === undefined || validPhoto(d.photo)) &&
+          (d.section === undefined || str(d.section)) &&
+          (d.fixedPrice === undefined || validMoney(d.fixedPrice)) &&
+          (d.choice === undefined ||
+            (object(d.choice) &&
+              Array.isArray(d.choice.intents) &&
+              d.choice.intents.every((intent: unknown) =>
+                ["coffee", "breakfast", "snack", "dessert", "refresh"].includes(
+                  String(intent),
+                ),
+              ) &&
+              ["hot", "cold", "none"].includes(String(d.choice.temperature)) &&
+              ["sweet", "neutral", "savoury"].includes(
+                String(d.choice.taste),
+              ) &&
+              Array.isArray(d.choice.partySizes) &&
+              d.choice.partySizes.every((size: unknown) =>
+                ["one", "two", "family"].includes(String(size)),
+              ) &&
+              ["confirmed", "provisional"].includes(
+                String(d.choice.sourceStatus),
+              ))) &&
           (d.components === undefined ||
             (Array.isArray(d.components) && d.components.every(str))) &&
           (d.discount === undefined || validMoney(d.discount)),
@@ -56,6 +89,7 @@ function validState(value: unknown): value is DeliveryState {
       validMoney(o.number) &&
       str(o.restaurantId) &&
       str(o.restaurantName) &&
+      (o.currency === undefined || validCurrency(o.currency)) &&
       str(o.pickup) &&
       str(o.address) &&
       str(o.note) &&
@@ -92,7 +126,7 @@ function readState(): DeliveryState {
   const state: unknown = JSON.parse(raw);
   if (!validState(state))
     throw new Error("Сохранённые демоданные не удалось прочитать");
-  return state;
+  return migrateDeliveryState(state);
 }
 
 export function useDelivery() {

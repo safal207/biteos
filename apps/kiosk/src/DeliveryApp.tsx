@@ -27,6 +27,8 @@ import {
   stages,
   statusLabels,
 } from "./delivery";
+import { recommendRobys } from "./robysChoice";
+import type { ChoiceAnswers } from "./robysChoice";
 import type {
   CartLine,
   Cuisine,
@@ -38,8 +40,12 @@ import { useDelivery } from "./useDelivery";
 import "./delivery.css";
 
 type View = "browse" | "orders" | "restaurant" | "courier";
-const money = (kopeks: number) =>
-  `${new Intl.NumberFormat("ru-RU").format(kopeks / 100)} ₽`;
+type Currency = "RUB" | "TRY";
+type StoreType = "all" | "cafe" | "fastfood";
+const money = (minor: number, currency: Currency) =>
+  `${new Intl.NumberFormat(currency === "TRY" ? "tr-TR" : "ru-RU", {
+    maximumFractionDigits: 2,
+  }).format(minor / 100)} ${currency === "TRY" ? "₺" : "₽"}`;
 const dishImage = () => ({
   backgroundImage: `url('${import.meta.env.BASE_URL}images/food-sheet.png')`,
 });
@@ -54,14 +60,43 @@ const demoAddresses = [
   "Демо: проспект Мира, 5, офис 3",
   "Демо: Парковый переулок, 21",
 ];
+const robyDemoAddresses = [
+  "Демо: Газипаша, тестовая точка 1",
+  "Демо: Газипаша, тестовая точка 2",
+];
+const menuSections = (restaurant: Restaurant) => {
+  const sections: { title: string; dishes: Dish[] }[] = [];
+  for (const dish of restaurant.dishes) {
+    const title = dish.section ?? "";
+    let section = sections.find((item) => item.title === title);
+    if (!section) {
+      section = { title, dishes: [] };
+      sections.push(section);
+    }
+    section.dishes.push(dish);
+  }
+  return sections;
+};
 
 function Food({
   image,
+  photo,
   className = "",
 }: {
   image: number;
+  photo?: string;
   className?: string;
 }) {
+  if (photo) {
+    return (
+      <img
+        className={`delivery-photo ${className}`}
+        src={`${import.meta.env.BASE_URL}${photo}`}
+        alt=""
+        loading="lazy"
+      />
+    );
+  }
   return (
     <div
       className={`food food-${image} ${className}`}
@@ -134,7 +169,7 @@ function OrderCard({
         ))}
       </div>
       <div className="delivery-order-bottom">
-        <strong>{money(order.total)}</strong>
+        <strong>{money(order.total, order.currency)}</strong>
         {children}
       </div>
     </article>
@@ -148,6 +183,7 @@ export function DeliveryApp() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [cuisine, setCuisine] = useState<Cuisine | "all">("all");
+  const [storeType, setStoreType] = useState<StoreType>("all");
   const [cartRestaurantId, setCartRestaurantId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [address, setAddress] = useState(demoAddresses[0]);
@@ -161,6 +197,7 @@ export function DeliveryApp() {
     name: "",
     description: "",
     cuisine: "burgers" as Cuisine,
+    currency: "RUB" as Currency,
     address: "",
     deliveryFee: "99",
     minimum: "250",
@@ -172,6 +209,14 @@ export function DeliveryApp() {
     price: "",
     image: "0",
   });
+  const [choiceAnswers, setChoiceAnswers] = useState<ChoiceAnswers>({
+    intent: "coffee",
+    temperature: "any",
+    taste: "any",
+    partySize: "one",
+    budget: 25000,
+  });
+  const [choiceDone, setChoiceDone] = useState(false);
   const cartRef = useRef<HTMLElement>(null);
   const [cartInView, setCartInView] = useState(false);
 
@@ -199,6 +244,10 @@ export function DeliveryApp() {
       state.restaurants.filter((restaurant) => {
         const term = search.trim().toLocaleLowerCase("ru-RU");
         return (
+          (storeType === "all" ||
+            (storeType === "cafe"
+              ? restaurant.cuisine === "cafe"
+              : restaurant.cuisine !== "cafe")) &&
           (cuisine === "all" || restaurant.cuisine === cuisine) &&
           (!term ||
             `${restaurant.name} ${restaurant.description} ${restaurant.dishes.map((dish) => dish.name).join(" ")}`
@@ -206,7 +255,14 @@ export function DeliveryApp() {
               .includes(term))
         );
       }),
-    [state.restaurants, search, cuisine],
+    [state.restaurants, search, cuisine, storeType],
+  );
+  const choice = useMemo(
+    () =>
+      selected?.id === "robys-coffee-house" && selected.open && choiceDone
+        ? recommendRobys(selected, choiceAnswers)
+        : null,
+    [selected, choiceAnswers, choiceDone],
   );
   const quote = useMemo(() => {
     if (!cartRestaurant || !cart.length) return null;
@@ -262,6 +318,13 @@ export function DeliveryApp() {
       );
       return;
     }
+    if (amount > 0 && !cart.length) {
+      setAddress(
+        restaurant.id === "robys-coffee-house"
+          ? robyDemoAddresses[0]
+          : demoAddresses[0],
+      );
+    }
     setNotice("");
     setCartRestaurantId(restaurant.id);
     setCart((previous) => {
@@ -270,7 +333,7 @@ export function DeliveryApp() {
       if (
         quantity > 20 ||
         (amount > 0 &&
-          previous.reduce((sum, line) => sum + line.quantity, 0) >= 50)
+          previous.reduce((sum, line) => sum + line.quantity, 0) + amount > 50)
       ) {
         setNotice(
           "В заказе может быть до 20 порций одного блюда и 50 порций всего",
@@ -294,7 +357,7 @@ export function DeliveryApp() {
       ),
     );
     setNotice(
-      `Комбо добавлено. Экономия ${money((offer.combo.discount ?? 0) * offerQuantity)}!`,
+      `Комбо добавлено. Экономия ${money((offer.combo.discount ?? 0) * offerQuantity, cartRestaurant.currency)}!`,
     );
   }
   async function placeOrder() {
@@ -325,6 +388,7 @@ export function DeliveryApp() {
         name: restaurantForm.name,
         description: restaurantForm.description,
         cuisine: restaurantForm.cuisine,
+        currency: restaurantForm.currency,
         address: restaurantForm.address,
         deliveryFee: Math.round(Number(restaurantForm.deliveryFee) * 100),
         minimum: Math.round(Number(restaurantForm.minimum) * 100),
@@ -338,6 +402,7 @@ export function DeliveryApp() {
         name: "",
         description: "",
         cuisine: "burgers",
+        currency: "RUB",
         address: "",
         deliveryFee: "99",
         minimum: "250",
@@ -378,7 +443,9 @@ export function DeliveryApp() {
           bite<span>os</span>
           <i />
         </a>
-        <div className="delivery-sidebar-caption">ОДИН ГОРОД · ТРИ РОЛИ</div>
+        <div className="delivery-sidebar-caption">
+          КАФЕ И ФАСТФУД · ТРИ РОЛИ
+        </div>
         <nav aria-label="Разделы доставки" className="delivery-nav">
           <button
             className={view === "browse" ? "is-active" : ""}
@@ -482,11 +549,11 @@ export function DeliveryApp() {
                       <em>уже в пути.</em>
                     </h1>
                     <p>
-                      Любимые рестораны и фастфуд в одном месте. Выбирай,
-                      добавляй комбо и следи за заказом.
+                      Выбирай между кафе Roby’s и фастфудом. Смотри меню,
+                      собирай комбо и пробуй умный выбор в демо.
                     </p>
                     <a href="#delivery-restaurants">
-                      Выбрать ресторан <ArrowRight size={19} />
+                      Выбрать заведение <ArrowRight size={19} />
                     </a>
                   </div>
                   <div className="delivery-hero-art">
@@ -504,19 +571,46 @@ export function DeliveryApp() {
                   id="delivery-restaurants"
                 >
                   <div>
-                    <span className="delivery-kicker">
-                      ТВОЙ ГОРОД. ТВОЙ ВКУС.
-                    </span>
+                    <span className="delivery-kicker">КАФЕ И ФАСТФУД</span>
                     <h2>Что закажем сегодня?</h2>
-                    <p>Только рестораны и фастфуд. Время и цены для демо.</p>
+                    <p>
+                      Roby’s в Газипаше и демофастфуд. Валюты и цены показаны
+                      отдельно.
+                    </p>
                   </div>
                   <span className="delivery-count">
                     {plural(filtered.length, [
-                      "ресторан",
-                      "ресторана",
-                      "ресторанов",
+                      "заведение",
+                      "заведения",
+                      "заведений",
                     ])}
                   </span>
+                </div>
+                <div
+                  className="delivery-store-types"
+                  role="group"
+                  aria-label="Выбор типа заведения"
+                >
+                  {(
+                    [
+                      ["all", "Все заведения", "Кафе и фастфуд"],
+                      ["cafe", "Кафе", "Roby’s Coffee House"],
+                      ["fastfood", "Фастфуд", "Бургеры, курица и гриль"],
+                    ] as const
+                  ).map(([type, label, detail]) => (
+                    <button
+                      key={type}
+                      className={storeType === type ? "active" : ""}
+                      aria-pressed={storeType === type}
+                      onClick={() => {
+                        setStoreType(type);
+                        setCuisine("all");
+                      }}
+                    >
+                      <strong>{label}</strong>
+                      <small>{detail}</small>
+                    </button>
+                  ))}
                 </div>
                 <div className="delivery-filterbar">
                   <label className="delivery-search">
@@ -528,22 +622,30 @@ export function DeliveryApp() {
                       aria-label="Поиск ресторанов и блюд"
                     />
                   </label>
-                  <div className="delivery-chips" aria-label="Кухня">
+                  <div className="delivery-chips" aria-label="Тип кухни">
                     <button
                       className={cuisine === "all" ? "active" : ""}
                       onClick={() => setCuisine("all")}
                     >
                       Все
                     </button>
-                    {(Object.keys(cuisines) as Cuisine[]).map((key) => (
-                      <button
-                        key={key}
-                        className={cuisine === key ? "active" : ""}
-                        onClick={() => setCuisine(key)}
-                      >
-                        {cuisines[key]}
-                      </button>
-                    ))}
+                    {(Object.keys(cuisines) as Cuisine[])
+                      .filter(
+                        (key) =>
+                          storeType === "all" ||
+                          (storeType === "cafe"
+                            ? key === "cafe"
+                            : key !== "cafe"),
+                      )
+                      .map((key) => (
+                        <button
+                          key={key}
+                          className={cuisine === key ? "active" : ""}
+                          onClick={() => setCuisine(key)}
+                        >
+                          {cuisines[key]}
+                        </button>
+                      ))}
                   </div>
                 </div>
                 <div className="delivery-restaurants">
@@ -558,7 +660,12 @@ export function DeliveryApp() {
                       }}
                     >
                       <div className="delivery-restaurant-art">
-                        <Food image={restaurant.dishes[0]?.image ?? 0} />
+                        <Food
+                          image={restaurant.dishes[0]?.image ?? 0}
+                          photo={
+                            restaurant.photo ?? restaurant.dishes[0]?.photo
+                          }
+                        />
                         <span
                           className={
                             restaurant.open
@@ -576,10 +683,22 @@ export function DeliveryApp() {
                         <h3>{restaurant.name}</h3>
                         <p>{restaurant.description}</p>
                         <div className="delivery-restaurant-meta">
-                          <span>
-                            <Clock3 size={15} /> ~{restaurant.eta} мин
-                          </span>
-                          <span>Доставка {money(restaurant.deliveryFee)}</span>
+                          {restaurant.id === "robys-coffee-house" ? (
+                            <span>Демо · условия доставки не заданы</span>
+                          ) : (
+                            <>
+                              <span>
+                                <Clock3 size={15} /> ~{restaurant.eta} мин
+                              </span>
+                              <span>
+                                Доставка{" "}
+                                {money(
+                                  restaurant.deliveryFee,
+                                  restaurant.currency,
+                                )}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <span className="delivery-card-arrow">
@@ -604,7 +723,9 @@ export function DeliveryApp() {
                 >
                   <ArrowLeft size={17} /> Все рестораны
                 </button>
-                <section className="delivery-restaurant-banner">
+                <section
+                  className={`delivery-restaurant-banner ${selected.cuisine === "cafe" ? "is-cafe" : ""}`}
+                >
                   <div>
                     <span className="delivery-kicker">
                       {cuisines[selected.cuisine]} ·{" "}
@@ -613,97 +734,351 @@ export function DeliveryApp() {
                     <h1>{selected.name}</h1>
                     <p>{selected.description}</p>
                     <div>
-                      <span>
-                        <Clock3 size={16} /> ~{selected.eta} мин
-                      </span>
+                      {selected.id === "robys-coffee-house" ? (
+                        <span>Демо · без реальной доставки</span>
+                      ) : (
+                        <span>
+                          <Clock3 size={16} /> ~{selected.eta} мин
+                        </span>
+                      )}
                       <span>
                         <MapPin size={16} /> {selected.address}
                       </span>
                     </div>
                   </div>
-                  <Food image={selected.dishes[0]?.image ?? 0} />
+                  <Food
+                    image={selected.dishes[0]?.image ?? 0}
+                    photo={selected.photo ?? selected.dishes[0]?.photo}
+                  />
                 </section>
+                {selected.id === "robys-coffee-house" && (
+                  <section
+                    className="delivery-smart-choice"
+                    aria-labelledby="delivery-smart-title"
+                  >
+                    <div className="delivery-smart-heading">
+                      <div>
+                        <span className="delivery-kicker">
+                          <Sparkles size={15} /> SMART CHOICE · ROBY’S
+                        </span>
+                        <h2 id="delivery-smart-title">
+                          Не знаешь, что выбрать?
+                        </h2>
+                        <p>
+                          Ответь на пять вопросов. Подберём позиции из
+                          доступного меню Roby’s в пределах твоего бюджета. Для
+                          двоих и семьи считаем нужное число порций.
+                        </p>
+                      </div>
+                      <span className="delivery-smart-count">5 вопросов</span>
+                    </div>
+                    <div className="delivery-smart-fields">
+                      <label>
+                        <span>
+                          <b>01</b> Что хочется?
+                        </span>
+                        <select
+                          value={choiceAnswers.intent}
+                          onChange={(event) => {
+                            setChoiceAnswers({
+                              ...choiceAnswers,
+                              intent: event.target
+                                .value as ChoiceAnswers["intent"],
+                            });
+                            setChoiceDone(false);
+                          }}
+                        >
+                          <option value="coffee">Кофе</option>
+                          <option value="breakfast">Завтрак</option>
+                          <option value="snack">Перекус</option>
+                          <option value="dessert">Десерт</option>
+                          <option value="refresh">Освежиться</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>
+                          <b>02</b> Температура?
+                        </span>
+                        <select
+                          value={choiceAnswers.temperature}
+                          onChange={(event) => {
+                            setChoiceAnswers({
+                              ...choiceAnswers,
+                              temperature: event.target
+                                .value as ChoiceAnswers["temperature"],
+                            });
+                            setChoiceDone(false);
+                          }}
+                        >
+                          <option value="any">Неважно</option>
+                          <option value="hot">Горячее</option>
+                          <option value="cold">Холодное</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>
+                          <b>03</b> Какой вкус?
+                        </span>
+                        <select
+                          value={choiceAnswers.taste}
+                          onChange={(event) => {
+                            setChoiceAnswers({
+                              ...choiceAnswers,
+                              taste: event.target
+                                .value as ChoiceAnswers["taste"],
+                            });
+                            setChoiceDone(false);
+                          }}
+                        >
+                          <option value="any">Любой</option>
+                          <option value="sweet">Сладкий</option>
+                          <option value="neutral">Нейтральный</option>
+                          <option value="savoury">Несладкий</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>
+                          <b>04</b> На сколько человек?
+                        </span>
+                        <select
+                          value={choiceAnswers.partySize}
+                          onChange={(event) => {
+                            setChoiceAnswers({
+                              ...choiceAnswers,
+                              partySize: event.target
+                                .value as ChoiceAnswers["partySize"],
+                            });
+                            setChoiceDone(false);
+                          }}
+                        >
+                          <option value="one">На одного</option>
+                          <option value="two">На двоих</option>
+                          <option value="family">
+                            Семья (пример: 3 порции)
+                          </option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>
+                          <b>05</b> Бюджет?
+                        </span>
+                        <select
+                          value={choiceAnswers.budget}
+                          onChange={(event) => {
+                            setChoiceAnswers({
+                              ...choiceAnswers,
+                              budget: Number(event.target.value),
+                            });
+                            setChoiceDone(false);
+                          }}
+                        >
+                          <option value={25000}>До 250 ₺</option>
+                          <option value={40000}>До 400 ₺</option>
+                          <option value={60000}>До 600 ₺</option>
+                          <option value={100000}>Гибкий бюджет</option>
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      className="delivery-smart-submit"
+                      disabled={!selected.open}
+                      onClick={() => setChoiceDone(true)}
+                    >
+                      Подобрать из меню <ArrowRight size={17} />
+                    </button>
+                    {!selected.open && (
+                      <p className="delivery-smart-closed">
+                        Кафе сейчас закрыто для демозаказов.
+                      </p>
+                    )}
+                    {choiceDone && selected.open && (
+                      <div
+                        className="delivery-smart-results"
+                        aria-live="polite"
+                      >
+                        {choice &&
+                        (choice.best || choice.economy || choice.premium) ? (
+                          (
+                            [
+                              ["Лучший выбор", choice.best],
+                              ["Подешевле", choice.economy],
+                              ["Побаловать себя", choice.premium],
+                            ] as const
+                          ).map(
+                            ([label, pick]) =>
+                              pick && (
+                                <article
+                                  className="delivery-smart-pick"
+                                  key={label}
+                                >
+                                  <Food
+                                    image={pick.dish.image}
+                                    photo={pick.dish.photo}
+                                  />
+                                  <div>
+                                    <span className="delivery-kicker">
+                                      {label}
+                                    </span>
+                                    <h3>{pick.dish.name}</h3>
+                                    <p>{pick.reason}</p>
+                                    <div>
+                                      <strong>
+                                        {pick.quantity > 1 && (
+                                          <small className="delivery-smart-units">
+                                            {pick.quantity} ×{" "}
+                                            {money(
+                                              pick.unitPrice,
+                                              selected.currency,
+                                            )}{" "}
+                                            ={" "}
+                                          </small>
+                                        )}
+                                        {money(pick.price, selected.currency)}
+                                      </strong>
+                                      <button
+                                        onClick={() =>
+                                          changeCart(
+                                            selected,
+                                            pick.dish,
+                                            pick.quantity,
+                                          )
+                                        }
+                                        aria-label={`Добавить ${pick.quantity} × ${pick.dish.name} из рекомендации`}
+                                      >
+                                        <Plus size={17} /> Добавить
+                                      </button>
+                                    </div>
+                                  </div>
+                                </article>
+                              ),
+                          )
+                        ) : (
+                          <p className="delivery-smart-empty">
+                            Под этот бюджет и ответы сейчас нет доступных блюд.
+                            Попробуй изменить выбор.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
                 <div className="delivery-section-head">
                   <div>
                     <span className="delivery-kicker">ВЫБИРАЙ СВОЁ</span>
                     <h2>Меню ресторана</h2>
-                    <p>
-                      Минимальный заказ {money(selected.minimum)} · доставка{" "}
-                      {money(selected.deliveryFee)}
-                    </p>
+                    {selected.id === "robys-coffee-house" ? (
+                      <p>
+                        Ориентировочные цены Roby’s в ₺. Оформление и доставка
+                        здесь только демо; тариф кафе не указан.{" "}
+                        <a
+                          className="delivery-source-link"
+                          href="https://safal207.github.io/robys-coffee-house-demo/menu.html"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Исходное меню Roby’s ↗
+                        </a>
+                      </p>
+                    ) : (
+                      <p>
+                        Минимальный заказ{" "}
+                        {money(selected.minimum, selected.currency)} · доставка{" "}
+                        {money(selected.deliveryFee, selected.currency)}
+                      </p>
+                    )}
                   </div>
                   <span className="delivery-count">
                     {plural(selected.dishes.length, ["блюдо", "блюда", "блюд"])}
                   </span>
                 </div>
-                <div className="delivery-dishes">
-                  {selected.dishes.map((dish) => {
-                    const available =
-                      selected.open && dishAvailable(selected, dish);
-                    const quantity =
-                      selected.id === cartRestaurantId
-                        ? (cart.find((line) => line.productId === dish.id)
-                            ?.quantity ?? 0)
-                        : 0;
-                    return (
-                      <article
-                        className={`delivery-dish ${available ? "" : "unavailable"}`}
-                        key={dish.id}
-                      >
-                        <div className="delivery-dish-image">
-                          <Food image={dish.image} />
-                          {dish.components && (
-                            <span className="delivery-combo-tag">
-                              КОМБО · −{money(dish.discount ?? 0)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="delivery-dish-info">
-                          <h3>{dish.name}</h3>
-                          <p>{dish.description}</p>
-                          <div className="delivery-dish-bottom">
-                            <strong>{money(dishPrice(selected, dish))}</strong>
-                            {available ? (
-                              quantity ? (
-                                <div className="delivery-stepper">
-                                  <button
-                                    aria-label={`Убрать ${dish.name}`}
-                                    onClick={() =>
-                                      changeCart(selected, dish, -1)
-                                    }
-                                  >
-                                    <Minus size={16} />
-                                  </button>
-                                  <b>{quantity}</b>
-                                  <button
-                                    aria-label={`Добавить ${dish.name}`}
-                                    onClick={() =>
-                                      changeCart(selected, dish, 1)
-                                    }
-                                  >
-                                    <Plus size={16} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  className="delivery-add"
-                                  onClick={() => changeCart(selected, dish, 1)}
-                                  aria-label={`Добавить ${dish.name}`}
-                                >
-                                  <Plus size={20} />
-                                </button>
-                              )
-                            ) : (
-                              <span className="delivery-soldout">
-                                Недоступно
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                {menuSections(selected).map((section) => (
+                  <section
+                    className="delivery-menu-section"
+                    key={section.title}
+                  >
+                    {section.title && (
+                      <h3 className="delivery-menu-section-title">
+                        {section.title}
+                      </h3>
+                    )}
+                    <div className="delivery-dishes">
+                      {section.dishes.map((dish) => {
+                        const available =
+                          selected.open && dishAvailable(selected, dish);
+                        const quantity =
+                          selected.id === cartRestaurantId
+                            ? (cart.find((line) => line.productId === dish.id)
+                                ?.quantity ?? 0)
+                            : 0;
+                        return (
+                          <article
+                            className={`delivery-dish ${available ? "" : "unavailable"}`}
+                            key={dish.id}
+                          >
+                            <div className="delivery-dish-image">
+                              <Food image={dish.image} photo={dish.photo} />
+                              {dish.components && (dish.discount ?? 0) > 0 && (
+                                <span className="delivery-combo-tag">
+                                  КОМБО · −
+                                  {money(dish.discount ?? 0, selected.currency)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="delivery-dish-info">
+                              <h3>{dish.name}</h3>
+                              <p>{dish.description}</p>
+                              <div className="delivery-dish-bottom">
+                                <strong>
+                                  {money(
+                                    dishPrice(selected, dish),
+                                    selected.currency,
+                                  )}
+                                </strong>
+                                {available ? (
+                                  quantity ? (
+                                    <div className="delivery-stepper">
+                                      <button
+                                        aria-label={`Убрать ${dish.name}`}
+                                        onClick={() =>
+                                          changeCart(selected, dish, -1)
+                                        }
+                                      >
+                                        <Minus size={16} />
+                                      </button>
+                                      <b>{quantity}</b>
+                                      <button
+                                        aria-label={`Добавить ${dish.name}`}
+                                        onClick={() =>
+                                          changeCart(selected, dish, 1)
+                                        }
+                                      >
+                                        <Plus size={16} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      className="delivery-add"
+                                      onClick={() =>
+                                        changeCart(selected, dish, 1)
+                                      }
+                                      aria-label={`Добавить ${dish.name}`}
+                                    >
+                                      <Plus size={20} />
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="delivery-soldout">
+                                    Недоступно
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
                 {!selected.dishes.length && (
                   <div className="delivery-empty">
                     <UtensilsCrossed size={30} />
@@ -739,12 +1114,15 @@ export function DeliveryApp() {
                     if (!dish) return null;
                     return (
                       <div className="delivery-cart-line" key={line.productId}>
-                        <Food image={dish.image} />
+                        <Food image={dish.image} photo={dish.photo} />
                         <div>
                           <strong>{dish.name}</strong>
                           <span>
                             {line.quantity} ×{" "}
-                            {money(dishPrice(cartRestaurant, dish))}
+                            {money(
+                              dishPrice(cartRestaurant, dish),
+                              cartRestaurant.currency,
+                            )}
                           </span>
                         </div>
                         <button
@@ -768,10 +1146,20 @@ export function DeliveryApp() {
                       </strong>
                       <small>
                         Фри + кола к каждой порции · экономия{" "}
-                        {money(offer.combo.discount ?? 0)} за порцию
+                        {money(
+                          offer.combo.discount ?? 0,
+                          cartRestaurant.currency,
+                        )}{" "}
+                        за порцию
                       </small>
                     </span>
-                    <b>+{money(offer.extra * offerQuantity)}</b>
+                    <b>
+                      +
+                      {money(
+                        offer.extra * offerQuantity,
+                        cartRestaurant.currency,
+                      )}
+                    </b>
                   </button>
                 )}
                 {quote ? (
@@ -779,20 +1167,36 @@ export function DeliveryApp() {
                     <div className="delivery-cart-totals">
                       <div>
                         <span>Блюда</span>
-                        <strong>{money(quote.subtotal)}</strong>
+                        <strong>
+                          {money(quote.subtotal, cartRestaurant.currency)}
+                        </strong>
                       </div>
                       <div>
-                        <span>Доставка</span>
-                        <strong>{money(quote.deliveryFee)}</strong>
+                        <span>
+                          {cartRestaurant.id === "robys-coffee-house"
+                            ? "Демо-доставка"
+                            : "Доставка"}
+                        </span>
+                        <strong>
+                          {money(quote.deliveryFee, cartRestaurant.currency)}
+                        </strong>
                       </div>
                       <div className="delivery-grand-total">
                         <span>Итого</span>
-                        <strong>{money(quote.total)}</strong>
+                        <strong>
+                          {money(quote.total, cartRestaurant.currency)}
+                        </strong>
                       </div>
                     </div>
+                    {cartRestaurant.id === "robys-coffee-house" && (
+                      <p className="delivery-demo-hint">
+                        0 ₺ за доставку здесь — значение демо, не тариф Roby’s.
+                      </p>
+                    )}
                     {quote.missing > 0 && (
                       <p className="delivery-minimum">
-                        До минимального заказа ещё {money(quote.missing)}
+                        До минимального заказа ещё{" "}
+                        {money(quote.missing, cartRestaurant.currency)}
                       </p>
                     )}
                     {checkout ? (
@@ -803,7 +1207,10 @@ export function DeliveryApp() {
                             value={address}
                             onChange={(event) => setAddress(event.target.value)}
                           >
-                            {demoAddresses.map((place) => (
+                            {(cartRestaurant.id === "robys-coffee-house"
+                              ? robyDemoAddresses
+                              : demoAddresses
+                            ).map((place) => (
                               <option key={place} value={place}>
                                 {place}
                               </option>
@@ -970,18 +1377,35 @@ export function DeliveryApp() {
                     Кухня
                     <select
                       value={restaurantForm.cuisine}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const nextCuisine = event.target.value as Cuisine;
                         setRestaurantForm({
                           ...restaurantForm,
-                          cuisine: event.target.value as Cuisine,
-                        })
-                      }
+                          cuisine: nextCuisine,
+                          currency: nextCuisine === "cafe" ? "TRY" : "RUB",
+                        });
+                      }}
                     >
                       {(Object.keys(cuisines) as Cuisine[]).map((key) => (
                         <option value={key} key={key}>
                           {cuisines[key]}
                         </option>
                       ))}
+                    </select>
+                  </label>
+                  <label>
+                    Валюта меню
+                    <select
+                      value={restaurantForm.currency}
+                      onChange={(event) =>
+                        setRestaurantForm({
+                          ...restaurantForm,
+                          currency: event.target.value as Currency,
+                        })
+                      }
+                    >
+                      <option value="RUB">Рубли (₽)</option>
+                      <option value="TRY">Турецкие лиры (₺)</option>
                     </select>
                   </label>
                   <label className="delivery-span-2">
@@ -1015,7 +1439,7 @@ export function DeliveryApp() {
                     />
                   </label>
                   <label>
-                    Доставка, ₽
+                    Доставка, {restaurantForm.currency === "TRY" ? "₺" : "₽"}
                     <input
                       required
                       type="number"
@@ -1032,7 +1456,7 @@ export function DeliveryApp() {
                     />
                   </label>
                   <label>
-                    Мин. заказ, ₽
+                    Мин. заказ, {restaurantForm.currency === "TRY" ? "₺" : "₽"}
                     <input
                       required
                       type="number"
@@ -1157,7 +1581,7 @@ export function DeliveryApp() {
                         />
                       </label>
                       <label>
-                        Цена, ₽
+                        Цена, {manager.currency === "TRY" ? "₺" : "₽"}
                         <input
                           required
                           type="number"
@@ -1225,12 +1649,16 @@ export function DeliveryApp() {
                 <div className="delivery-manager-dishes">
                   {manager.dishes.map((dish) => (
                     <div className="delivery-manager-dish" key={dish.id}>
-                      <Food image={dish.image} />
+                      <Food image={dish.image} photo={dish.photo} />
                       <div>
                         <strong>{dish.name}</strong>
                         <small>
-                          {dish.components ? "Комбо · " : ""}
-                          {money(dishPrice(manager, dish))}
+                          {dish.components
+                            ? (dish.discount ?? 0) > 0
+                              ? "Комбо · "
+                              : "Набор · "
+                            : ""}
+                          {money(dishPrice(manager, dish), manager.currency)}
                         </small>
                         {dish.components &&
                           dish.available &&
@@ -1474,7 +1902,11 @@ export function DeliveryApp() {
           >
             <ShoppingBag size={18} />
             <span>Корзина · {plural(count, ["блюдо", "блюда", "блюд"])}</span>
-            <strong>{quote ? money(quote.total) : "Проверить"}</strong>
+            <strong>
+              {quote && cartRestaurant
+                ? money(quote.total, cartRestaurant.currency)
+                : "Проверить"}
+            </strong>
             <ArrowRight size={17} />
           </button>
         )}

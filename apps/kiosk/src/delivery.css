@@ -1693,3 +1693,290 @@
     display: none;
   }
 }
+
+.delivery-store-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.delivery-store-types button {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 15px 17px;
+  text-align: left;
+  background: #fffefa;
+  border: 1px solid #e3e7dc;
+  border-radius: 12px;
+  color: var(--delivery-ink);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.delivery-store-types button:hover,
+.delivery-store-types button.active {
+  border-color: #6e8b70;
+  background: #e9f0e5;
+}
+.delivery-store-types strong {
+  font-size: 13px;
+}
+.delivery-store-types small {
+  font-size: 9px;
+  color: #657765;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.delivery-photo {
+  display: block;
+  object-fit: cover;
+}
+.delivery-restaurant-art .delivery-photo {
+  width: 100%;
+  height: 100%;
+}
+.delivery-restaurant-banner.is-cafe {
+  background: #eaded0;
+}
+.delivery-restaurant-banner > .delivery-photo {
+  width: 40%;
+  min-height: 250px;
+  object-fit: cover;
+}
+.delivery-restaurant-banner.is-cafe > div:first-child {
+  background: linear-gradient(90deg, #eaded0 80%, #eaded000);
+}
+.delivery-dish-image .delivery-photo {
+  width: 100%;
+  height: 100%;
+}
+.delivery-cart-line > .delivery-photo,
+.delivery-manager-dish > .delivery-photo {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 9px;
+}
+.delivery-menu-section {
+  margin-top: 19px;
+}
+.delivery-menu-section-title {
+  margin-bottom: 12px;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+.delivery-source-link {
+  color: #985232;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 800;
+}
+.delivery-smart-choice {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #e5ccac;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #fcf5e8, #f7ecdd);
+}
+.delivery-smart-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+.delivery-smart-heading .delivery-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ad6840;
+}
+.delivery-smart-heading h2 {
+  margin: 8px 0 7px;
+  font-size: 24px;
+  letter-spacing: -0.8px;
+}
+.delivery-smart-heading p {
+  max-width: 500px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #776b5f;
+}
+.delivery-smart-count {
+  align-self: start;
+  flex: none;
+  padding: 7px 10px;
+  border-radius: 99px;
+  background: #e8d6c4;
+  color: #704e38;
+  font-size: 10px;
+  font-weight: 800;
+}
+.delivery-smart-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  margin: 22px 0 17px;
+}
+.delivery-smart-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: #443e37;
+  font-size: 10px;
+  font-weight: 800;
+}
+.delivery-smart-fields label span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.delivery-smart-fields label b {
+  color: #ac7650;
+  font-size: 9px;
+}
+.delivery-smart-fields select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid #dfd0c0;
+  background: #fffefa;
+  color: #443e37;
+  font-size: 11px;
+}
+.delivery-smart-fields select:focus-visible,
+.delivery-store-types button:focus-visible,
+.delivery-smart-submit:focus-visible,
+.delivery-smart-pick button:focus-visible {
+  outline: 2px solid #4f7358;
+  outline-offset: 2px;
+}
+.delivery-smart-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-radius: 9px;
+  background: #563b2d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.delivery-smart-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 19px;
+}
+.delivery-smart-pick {
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid #e4d4c4;
+  background: #fffefa;
+}
+.delivery-smart-pick > .delivery-photo,
+.delivery-smart-pick > .food {
+  width: 100%;
+  height: 112px;
+  object-fit: cover;
+}
+.delivery-smart-pick > div {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  min-height: 150px;
+}
+.delivery-smart-pick h3 {
+  margin-top: 5px;
+  font-size: 13px;
+}
+.delivery-smart-pick p {
+  margin-top: 5px;
+  color: #756e64;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.delivery-smart-pick > div > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.delivery-smart-pick strong {
+  font-size: 13px;
+}
+.delivery-smart-units {
+  display: block;
+  margin-bottom: 3px;
+  color: #74695e;
+  font-size: 9px;
+  font-weight: 700;
+}
+.delivery-smart-pick button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #e6efe3;
+  color: #284c32;
+  font-size: 10px;
+  font-weight: 800;
+}
+.delivery-smart-empty,
+.delivery-smart-closed {
+  color: #795b48;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.delivery-smart-empty {
+  grid-column: 1 / -1;
+}
+.delivery-smart-closed {
+  margin-top: 10px;
+}
+
+@media (max-width: 1350px) {
+  .delivery-smart-fields,
+  .delivery-smart-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .delivery-store-types {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .delivery-store-types button {
+    padding: 10px 13px;
+  }
+  .delivery-smart-choice {
+    padding: 16px;
+  }
+  .delivery-smart-heading h2 {
+    font-size: 20px;
+  }
+  .delivery-smart-count {
+    display: none;
+  }
+  .delivery-smart-fields,
+  .delivery-smart-results {
+    grid-template-columns: 1fr;
+  }
+  .delivery-restaurant-banner > .delivery-photo {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 45%;
+    height: 100%;
+    opacity: 0.35;
+  }
+}
