@@ -30,6 +30,7 @@ import type {
   Quote,
 } from "./types";
 import { api, money, IS_DEMO } from "./types";
+import { DeliveryApp } from "./DeliveryApp";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -485,6 +486,9 @@ function App() {
           ГОРЯЧЕЕ. СВЕЖЕЕ. ТВОЁ.
         </div>
         <div className="header-end">
+          <a className="kiosk-delivery-link" href="#delivery">
+            Доставка <ArrowUpRight size={15} />
+          </a>
           <span className="demo-label">
             {IS_DEMO ? "ОНЛАЙН-ДЕМО" : "ДЕМО-КИОСК"}
           </span>
@@ -959,8 +963,18 @@ function App() {
     </div>
   );
 }
+function BiteOS() {
+  const [kiosk, setKiosk] = useState(location.hash === "#kiosk");
+  useEffect(() => {
+    const route = () => setKiosk(location.hash === "#kiosk");
+    window.addEventListener("hashchange", route);
+    return () => window.removeEventListener("hashchange", route);
+  }, []);
+  return kiosk ? <App /> : <DeliveryApp />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <BiteOS />
   </React.StrictMode>,
 );

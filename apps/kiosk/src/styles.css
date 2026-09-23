@@ -89,6 +89,18 @@ p {
   border-radius: 50%;
   margin-left: 4px;
 }
+.kiosk-delivery-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: #e9ede1;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
 .location {
   display: flex;
   gap: 9px;
@@ -1599,6 +1611,12 @@ h1 > span {
   }
 }
 @media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+  .header .demo-label {
+    display: none;
+  }
   .product-grid {
     grid-template-columns: minmax(0, 1fr);
   }
