@@ -18,6 +18,8 @@ const object = (value: unknown): value is Record<string, unknown> =>
 const str = (value: unknown): value is string => typeof value === "string";
 const validMoney = (value: unknown) =>
   Number.isSafeInteger(value) && Number(value) >= 0;
+const validPrepMinutes = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) >= 5 && Number(value) <= 120;
 const validCurrency = (value: unknown) => value === "RUB" || value === "TRY";
 const validPhoto = (value: unknown) =>
   typeof value === "string" &&
@@ -46,6 +48,7 @@ function validState(value: unknown): value is LegacyDeliveryState {
       validMoney(r.deliveryFee) &&
       validMoney(r.minimum) &&
       validMoney(r.eta) &&
+      (r.prepMinutes === undefined || validPrepMinutes(r.prepMinutes)) &&
       typeof r.open === "boolean" &&
       Array.isArray(r.dishes) &&
       r.dishes.every(
@@ -113,6 +116,9 @@ function validState(value: unknown): value is LegacyDeliveryState {
       str(o.note) &&
       str(o.status) &&
       Object.hasOwn(statusLabels, o.status) &&
+      (o.prepDurationMinutes === undefined ||
+        o.prepDurationMinutes === null ||
+        validPrepMinutes(o.prepDurationMinutes)) &&
       (o.courierId === null || str(o.courierId)) &&
       str(o.createdAt) &&
       validMoney(o.subtotal) &&

@@ -57,6 +57,7 @@ export type Restaurant = {
   deliveryFee: number;
   minimum: number;
   eta: number;
+  prepMinutes: number;
   open: boolean;
   dishes: Dish[];
   offerRules: OfferRule[];
@@ -101,6 +102,7 @@ export type DeliveryOrder = {
   deliveryFee: number;
   total: number;
   status: DeliveryStatus;
+  prepDurationMinutes: number | null;
   courierId: string | null;
   createdAt: string;
   history: { status: DeliveryStatus; at: string }[];
@@ -115,11 +117,15 @@ export type LegacyDeliveryState = Omit<
   DeliveryState,
   "restaurants" | "orders" | "offerEvents"
 > & {
-  restaurants: (Omit<Restaurant, "currency" | "offerRules"> & {
+  restaurants: (Omit<Restaurant, "currency" | "offerRules" | "prepMinutes"> & {
     currency?: Currency;
     offerRules?: OfferRule[];
+    prepMinutes?: number;
   })[];
-  orders: (Omit<DeliveryOrder, "currency"> & { currency?: Currency })[];
+  orders: (Omit<DeliveryOrder, "currency" | "prepDurationMinutes"> & {
+    currency?: Currency;
+    prepDurationMinutes?: number | null;
+  })[];
   offerEvents?: OfferEvent[];
 };
 export type RestaurantInput = Pick<
@@ -131,10 +137,12 @@ export type RestaurantInput = Pick<
   | "deliveryFee"
   | "minimum"
   | "eta"
+  | "prepMinutes"
 > & { currency?: Currency };
 export type DeliveryAction =
   | { type: "restaurant.add"; id: string; input: RestaurantInput }
   | { type: "restaurant.toggle"; restaurantId: string }
+  | { type: "restaurant.prepTime"; restaurantId: string; prepMinutes: number }
   | {
       type: "dish.add";
       restaurantId: string;
@@ -366,6 +374,7 @@ export function robyRestaurant(): Restaurant {
     deliveryFee: 0,
     minimum: 0,
     eta: 30,
+    prepMinutes: 8,
     open: true,
     dishes,
     offerRules: defaultOfferRules("robys-coffee-house", dishes),
@@ -408,6 +417,7 @@ export function initialDeliveryState(): DeliveryState {
         deliveryFee: 9900,
         minimum: 25000,
         eta: 30,
+        prepMinutes: 12,
         open: true,
         dishes,
         offerRules: defaultOfferRules("bite-burger", dishes),
@@ -422,6 +432,7 @@ export function initialDeliveryState(): DeliveryState {
         deliveryFee: 7900,
         minimum: 19900,
         eta: 25,
+        prepMinutes: 10,
         open: true,
         dishes: structuredClone(
           dishes.filter((d) =>
@@ -442,6 +453,7 @@ export function initialDeliveryState(): DeliveryState {
         deliveryFee: 11900,
         minimum: 34900,
         eta: 40,
+        prepMinutes: 18,
         open: true,
         dishes: structuredClone(
           dishes.filter((d) =>
@@ -461,6 +473,7 @@ export function migrateDeliveryState(
   const restaurants = stored.restaurants.map((restaurant) => ({
     ...restaurant,
     currency: restaurant.currency ?? "RUB",
+    prepMinutes: restaurant.prepMinutes ?? 12,
     offerRules:
       restaurant.offerRules ??
       defaultOfferRules(restaurant.id, restaurant.dishes),
@@ -481,7 +494,53 @@ export function migrateDeliveryState(
         restaurants.find((restaurant) => restaurant.id === order.restaurantId)
           ?.currency ??
         "RUB",
+      prepDurationMinutes:
+        order.status === "preparing"
+          ? order.prepDurationMinutes ??
+            restaurants.find((restaurant) => restaurant.id === order.restaurantId)
+              ?.prepMinutes ??
+            12
+          : null,
     })),
+  };
+}
+
+export type PreparationTime = {
+  remainingSeconds: number;
+  totalSeconds: number;
+  progressPercent: number;
+  expired: boolean;
+};
+
+export function preparationTime(
+  order: DeliveryOrder,
+  nowMs: number,
+): PreparationTime | null {
+  if (
+    order.status !== "preparing" ||
+    !Number.isSafeInteger(nowMs) ||
+    !Number.isSafeInteger(order.prepDurationMinutes) ||
+    order.prepDurationMinutes === null ||
+    order.prepDurationMinutes < 5 ||
+    order.prepDurationMinutes > 120
+  ) return null;
+  const startedAt = order.history.find((event) => event.status === "preparing")?.at;
+  if (!startedAt) return null;
+  const startMs = Date.parse(startedAt);
+  if (
+    !Number.isSafeInteger(startMs) ||
+    new Date(startMs).toISOString() !== startedAt ||
+    startMs > nowMs
+  ) return null;
+  const totalSeconds = order.prepDurationMinutes * 60;
+  const elapsedMs = nowMs - startMs;
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+  return {
+    remainingSeconds,
+    totalSeconds,
+    progressPercent: Math.min(100, Math.floor((elapsedMs / (totalSeconds * 1000)) * 100)),
+    expired: remainingSeconds === 0,
   };
 }
 
@@ -709,6 +768,7 @@ export function applyDeliveryAction(
       ),
       minimum: amount(i.minimum, 1000000, "Проверьте минимальную сумму"),
       eta: amount(i.eta, 180, "Время доставки: от 10 до 180 минут", 10),
+      prepMinutes: amount(i.prepMinutes, 120, "Время приготовления: от 5 до 120 минут", 5),
       open: true,
       dishes: [],
       offerRules: [],
@@ -729,6 +789,15 @@ export function applyDeliveryAction(
     if (!restaurant) throw new Error("Ресторан не найден");
     if (action.type === "restaurant.toggle") {
       restaurant.open = !restaurant.open;
+      return state;
+    }
+    if (action.type === "restaurant.prepTime") {
+      restaurant.prepMinutes = amount(
+        action.prepMinutes,
+        120,
+        "Время приготовления: от 5 до 120 минут",
+        5,
+      );
       return state;
     }
     if (action.type === "dish.add") {
@@ -816,6 +885,7 @@ export function applyDeliveryAction(
         deliveryFee: quote.deliveryFee,
         total: quote.total,
         status: "new",
+        prepDurationMinutes: null,
         courierId: null,
         createdAt: at,
         history: [{ status: "new", at }],
@@ -836,6 +906,9 @@ export function applyDeliveryAction(
       if (order.status !== expected)
         throw new Error("Статус уже изменился. Обновите список.");
       next = expected === "new" ? "preparing" : "ready";
+      order.prepDurationMinutes = next === "preparing"
+        ? state.restaurants.find((restaurant) => restaurant.id === action.restaurantId)?.prepMinutes ?? 12
+        : null;
       break;
     }
     case "order.claim":

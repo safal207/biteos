@@ -9,6 +9,7 @@ import {
   dishPrice,
   initialDeliveryState,
   migrateDeliveryState,
+  preparationTime,
 } from "../src/delivery.ts";
 import { recommendRobys } from "../src/robysChoice.ts";
 
@@ -258,6 +259,7 @@ test("restaurants keep independent menus, stock, and orders", () => {
     deliveryFee: 6900,
     minimum: 15000,
     eta: 35,
+    prepMinutes: 15,
   };
   state = applyDeliveryAction(state, {
     type: "restaurant.add",
@@ -516,6 +518,7 @@ test("invalid quantities, minima, totals and form fields are rejected", () => {
     deliveryFee: 10000,
     minimum: 10000,
     eta: 30,
+    prepMinutes: 15,
   };
   for (const patch of [
     { name: "x" },
@@ -523,6 +526,8 @@ test("invalid quantities, minima, totals and form fields are rejected", () => {
     { deliveryFee: -1 },
     { minimum: 1.5 },
     { eta: 9 },
+    { prepMinutes: 4 },
+    { prepMinutes: 121 },
     { address: "x" },
   ]) {
     assert.throws(() =>
@@ -709,4 +714,127 @@ test("old delivery sessions gain offer rules and events without losing orders", 
     type: "offer.remove", restaurantId: "bite-burger", ruleId: "offer-smash-fries",
   });
   assert.equal(restaurant(migrateDeliveryState(removed)).offerRules.length, 1);
+});
+
+test("restaurant preparation settings start an independent order countdown", () => {
+  let state = initialDeliveryState();
+  assert.deepEqual(
+    state.restaurants.map((entry) => [entry.id, entry.prepMinutes]),
+    [
+      ["bite-burger", 12],
+      ["crispy-club", 10],
+      ["bbq-yard", 18],
+      ["robys-coffee-house", 8],
+    ],
+  );
+  state = place(state);
+  assert.equal(state.orders[0].prepDurationMinutes, null);
+  assert.equal(preparationTime(state.orders[0], Date.parse(at)), null);
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-1",
+  }, at);
+  assert.equal(state.orders[0].prepDurationMinutes, 12);
+  assert.deepEqual(preparationTime(state.orders[0], Date.parse(at)), {
+    remainingSeconds: 720,
+    totalSeconds: 720,
+    progressPercent: 0,
+    expired: false,
+  });
+  assert.deepEqual(preparationTime(state.orders[0], Date.parse(at) + 120_000), {
+    remainingSeconds: 600,
+    totalSeconds: 720,
+    progressPercent: 16,
+    expired: false,
+  });
+  state = applyDeliveryAction(state, {
+    type: "restaurant.prepTime", restaurantId: "bite-burger", prepMinutes: 5,
+  });
+  assert.equal(restaurant(state).prepMinutes, 5);
+  assert.equal(state.orders[0].prepDurationMinutes, 12);
+  assert.equal(preparationTime(state.orders[0], Date.parse(at) + 120_000)?.remainingSeconds, 600);
+  for (const prepMinutes of [4, 121, 12.5, NaN]) {
+    assert.throws(() => applyDeliveryAction(state, {
+      type: "restaurant.prepTime", restaurantId: "bite-burger", prepMinutes,
+    }), /Время приготовления/);
+  }
+});
+
+test("countdown expires visibly without changing status and stops when ready", () => {
+  let state = place(initialDeliveryState());
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-1",
+  }, at);
+  const endMs = Date.parse(at) + 12 * 60_000;
+  assert.equal(preparationTime(state.orders[0], endMs - 1)?.remainingSeconds, 1);
+  assert.deepEqual(preparationTime(state.orders[0], endMs), {
+    remainingSeconds: 0,
+    totalSeconds: 720,
+    progressPercent: 100,
+    expired: true,
+  });
+  assert.equal(preparationTime(state.orders[0], endMs + 3_600_000)?.remainingSeconds, 0);
+  assert.equal(state.orders[0].status, "preparing");
+  state = applyDeliveryAction(state, {
+    type: "order.ready", restaurantId: "bite-burger", orderId: "order-1",
+  }, new Date(endMs).toISOString());
+  assert.equal(state.orders[0].prepDurationMinutes, null);
+  assert.equal(preparationTime(state.orders[0], endMs), null);
+});
+
+test("older saved orders gain a stable preparation duration on migration", () => {
+  let state = place(initialDeliveryState());
+  state = place(state, { id: "order-2" });
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-1",
+  }, at);
+  const legacy = JSON.parse(JSON.stringify(state));
+  for (const entry of legacy.restaurants) delete entry.prepMinutes;
+  for (const order of legacy.orders) delete order.prepDurationMinutes;
+  const restored = migrateDeliveryState(legacy);
+  assert.equal(restaurant(restored).prepMinutes, 12);
+  assert.equal(restored.orders.find((order) => order.id === "order-1").prepDurationMinutes, 12);
+  assert.equal(restored.orders.find((order) => order.id === "order-2").prepDurationMinutes, null);
+  assert.equal(
+    preparationTime(restored.orders.find((order) => order.id === "order-1"), Date.parse(at) + 60_000)?.remainingSeconds,
+    660,
+  );
+  assert.equal(migrateDeliveryState(restored).orders.find((order) => order.id === "order-1").prepDurationMinutes, 12);
+});
+
+test("invalid or future preparing timestamps do not render a countdown", () => {
+  let state = place(initialDeliveryState());
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-1",
+  }, at);
+  const order = state.orders[0];
+  const nowMs = Date.parse(at);
+  assert.equal(preparationTime(order, nowMs - 1), null);
+  assert.equal(preparationTime(order, NaN), null);
+  for (const badAt of ["invalid", "2026-09-22T12:00:00Z", "9999-99-99T00:00:00.000Z"]) {
+    const invalid = structuredClone(order);
+    invalid.history.find((event) => event.status === "preparing").at = badAt;
+    assert.equal(preparationTime(invalid, nowMs), null);
+  }
+  const invalidDuration = structuredClone(order);
+  invalidDuration.prepDurationMinutes = Infinity;
+  assert.equal(preparationTime(invalidDuration, nowMs), null);
+});
+
+test("simultaneous orders keep their own start and duration", () => {
+  let state = place(initialDeliveryState());
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-1",
+  }, at);
+  state = applyDeliveryAction(state, {
+    type: "restaurant.prepTime", restaurantId: "bite-burger", prepMinutes: 5,
+  });
+  state = place(state, { id: "order-2" });
+  const laterAt = new Date(Date.parse(at) + 60_000).toISOString();
+  state = applyDeliveryAction(state, {
+    type: "order.prepare", restaurantId: "bite-burger", orderId: "order-2",
+  }, laterAt);
+  const reloaded = migrateDeliveryState(JSON.parse(JSON.stringify(state)));
+  const nowMs = Date.parse(laterAt) + 60_000;
+  assert.equal(preparationTime(reloaded.orders.find((order) => order.id === "order-1"), nowMs)?.remainingSeconds, 600);
+  assert.equal(preparationTime(reloaded.orders.find((order) => order.id === "order-2"), nowMs)?.remainingSeconds, 240);
 });

@@ -25,6 +25,7 @@ import {
   deliveryQuote,
   dishAvailable,
   dishPrice,
+  preparationTime,
   stages,
   statusLabels,
 } from "./delivery";
@@ -77,6 +78,7 @@ const robyDemoAddresses = [
   "Демо: Газипаша, тестовая точка 1",
   "Демо: Газипаша, тестовая точка 2",
 ];
+const preparationPresets = [5, 8, 10, 12, 15, 18, 20, 25, 30, 45, 60, 90, 120];
 const menuSections = (restaurant: Restaurant) => {
   const sections: { title: string; dishes: Dish[] }[] = [];
   for (const dish of restaurant.dishes) {
@@ -143,11 +145,48 @@ function Status({ order }: { order: DeliveryOrder }) {
   );
 }
 
+function PreparationTimer({ order, nowMs }: { order: DeliveryOrder; nowMs: number }) {
+  if (order.status !== "preparing") return null;
+  const clock = preparationTime(order, nowMs);
+  if (!clock) {
+    return (
+      <div className="delivery-prep-timer is-expired">
+        <span>ОРИЕНТИР КУХНИ</span>
+        <p>Время приготовления уточняется у ресторана.</p>
+      </div>
+    );
+  }
+  const remaining = `${String(Math.floor(clock.remainingSeconds / 60)).padStart(2, "0")}:${String(clock.remainingSeconds % 60).padStart(2, "0")}`;
+  return (
+    <div className={`delivery-prep-timer ${clock.expired ? "is-expired" : ""}`}>
+      <div className="delivery-prep-timer-head">
+        <div>
+          <span>ОРИЕНТИР КУХНИ</span>
+          <p>{clock.expired ? "Плановое время вышло" : "Приготовление идёт"}</p>
+        </div>
+        <strong role="timer" aria-label={clock.expired ? "Плановое время приготовления вышло" : `До планового времени осталось ${remaining}`} aria-live="off">
+          {remaining}
+        </strong>
+      </div>
+      <div className="delivery-prep-timer-track" aria-hidden="true">
+        <span style={{ width: `${clock.progressPercent}%` }} />
+      </div>
+      <small>
+        {clock.expired
+          ? "Ждём, когда ресторан подтвердит готовность."
+          : `Примерно ${order.prepDurationMinutes} мин от начала готовки. Готовность подтвердит ресторан.`}
+      </small>
+    </div>
+  );
+}
+
 function OrderCard({
   order,
+  nowMs,
   children,
 }: {
   order: DeliveryOrder;
+  nowMs: number;
   children?: React.ReactNode;
 }) {
   const created = new Date(order.createdAt).toLocaleString("ru-RU", {
@@ -168,6 +207,7 @@ function OrderCard({
         <time dateTime={order.createdAt}>{created}</time>
       </div>
       <Status order={order} />
+      <PreparationTimer order={order} nowMs={nowMs} />
       <p className="delivery-order-route">
         <Store size={16} /> Выдача: {order.pickup}
       </p>
@@ -193,6 +233,7 @@ export function DeliveryApp() {
   const { state, dispatch, error, canReset, resetDemo, pending, clearError } =
     useDelivery();
   const [view, setView] = useState<View>("browse");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [cuisine, setCuisine] = useState<Cuisine | "all">("all");
@@ -226,6 +267,7 @@ export function DeliveryApp() {
     deliveryFee: "99",
     minimum: "250",
     eta: "30",
+    prepMinutes: "12",
   });
   const [dishForm, setDishForm] = useState({
     name: "",
@@ -254,6 +296,21 @@ export function DeliveryApp() {
     observer.observe(cartRef.current);
     return () => observer.disconnect();
   }, [view]);
+
+  useEffect(() => {
+    if (
+      (view !== "orders" && view !== "restaurant") ||
+      !state.orders.some((order) => order.status === "preparing")
+    ) return;
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [view, state.orders]);
 
   const selected = state.restaurants.find(
     (restaurant) => restaurant.id === selectedId,
@@ -626,6 +683,7 @@ export function DeliveryApp() {
         deliveryFee: Math.round(Number(restaurantForm.deliveryFee) * 100),
         minimum: Math.round(Number(restaurantForm.minimum) * 100),
         eta: Number(restaurantForm.eta),
+        prepMinutes: Number(restaurantForm.prepMinutes),
       },
     });
     if (ok) {
@@ -640,6 +698,7 @@ export function DeliveryApp() {
         deliveryFee: "99",
         minimum: "250",
         eta: "30",
+        prepMinutes: "12",
       });
       setNotice("Ресторан добавлен. Теперь добавь блюда в его меню.");
     }
@@ -1615,7 +1674,7 @@ export function DeliveryApp() {
             {state.orders.length ? (
               <div className="delivery-order-grid">
                 {state.orders.map((order) => (
-                  <OrderCard order={order} key={order.id}>
+                  <OrderCard order={order} nowMs={nowMs} key={order.id}>
                     {order.status === "new" && (
                       <button
                         className="delivery-outline"
@@ -1810,6 +1869,23 @@ export function DeliveryApp() {
                       }
                     />
                   </label>
+                  <label>
+                    Приготовление, мин
+                    <input
+                      required
+                      type="number"
+                      min="5"
+                      max="120"
+                      step="1"
+                      value={restaurantForm.prepMinutes}
+                      onChange={(event) =>
+                        setRestaurantForm({
+                          ...restaurantForm,
+                          prepMinutes: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
                 </div>
                 <button
                   className="delivery-primary"
@@ -1863,6 +1939,39 @@ export function DeliveryApp() {
                     <span />
                     {manager.open ? "Принимает заказы" : "Закрыт для заказов"}
                   </button>
+                </section>
+                <section className="delivery-prep-setting delivery-panel">
+                  <div>
+                    <span className="delivery-kicker">ТАЙМЕР КУХНИ</span>
+                    <h3>Ориентир приготовления</h3>
+                    <p>
+                      Отсчёт начнётся, когда ресторан нажмёт «Начать готовить».
+                      Готовность отмечается отдельно.
+                    </p>
+                  </div>
+                  <label>
+                    Минут
+                    <select
+                      value={manager.prepMinutes}
+                      disabled={pending}
+                      onChange={(event) =>
+                        void dispatch({
+                          type: "restaurant.prepTime",
+                          restaurantId: manager.id,
+                          prepMinutes: Number(event.target.value),
+                        })
+                      }
+                    >
+                      {[...new Set([...preparationPresets, manager.prepMinutes])]
+                        .sort((left, right) => left - right)
+                        .map((minutes) => (
+                          <option value={minutes} key={minutes}>
+                            {minutes} мин
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <small>Новая настройка не меняет уже запущенные отсчёты.</small>
                 </section>
                 <div className="delivery-manager-section-head">
                   <div>
@@ -2220,7 +2329,7 @@ export function DeliveryApp() {
                   {state.orders
                     .filter((order) => order.restaurantId === manager.id)
                     .map((order) => (
-                      <OrderCard order={order} key={order.id}>
+                      <OrderCard order={order} nowMs={nowMs} key={order.id}>
                         {order.status === "new" && (
                           <button
                             className="delivery-primary"
@@ -2313,7 +2422,7 @@ export function DeliveryApp() {
               {state.orders
                 .filter((order) => order.status === "ready")
                 .map((order) => (
-                  <OrderCard order={order} key={order.id}>
+                  <OrderCard order={order} nowMs={nowMs} key={order.id}>
                     <button
                       className="delivery-primary"
                       disabled={pending}
@@ -2362,7 +2471,7 @@ export function DeliveryApp() {
                     ["assigned", "picked-up"].includes(order.status),
                 )
                 .map((order) => (
-                  <OrderCard order={order} key={order.id}>
+                  <OrderCard order={order} nowMs={nowMs} key={order.id}>
                     {order.status === "assigned" && (
                       <button
                         className="delivery-primary"
