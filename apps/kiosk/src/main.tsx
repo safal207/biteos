@@ -30,6 +30,16 @@ import type {
   Quote,
 } from "./types";
 import { api, money, IS_DEMO } from "./types";
+import {
+  applyKioskOffer,
+  cheaperKioskFallback,
+  filterNativeKioskGateOffers,
+  kioskGateCandidates,
+  kioskOfferCost,
+  kioskOfferKey,
+  readConfiguredKioskOffers,
+  recordKioskOfferEvent,
+} from "./kioskOfferFlow";
 import { DeliveryApp } from "./DeliveryApp";
 import "@fontsource-variable/manrope";
 import "./styles.css";
@@ -243,6 +253,20 @@ const categories = [
   { id: "drinks", name: "Напитки", icon: Coffee },
 ];
 
+type PricedKioskOffer = {
+  offer: Offer;
+  items: Item[];
+  quote: Quote;
+  delta: number;
+};
+type KioskOfferGate = {
+  attemptId: string;
+  baseTotal: number;
+  active: PricedKioskOffer;
+  fallback: PricedKioskOffer | null;
+  step: 0 | 1;
+};
+
 function App() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -257,9 +281,14 @@ function App() {
     fingerprint: string;
     quote: Quote;
   } | null>(null);
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offers, setOffers] = useState<{
+    fingerprint: string;
+    values: Offer[];
+  } | null>(null);
   const [error, setError] = useState("");
   const [checkout, setCheckout] = useState(false);
+  const [offerGate, setOfferGate] = useState<KioskOfferGate | null>(null);
+  const [gateLoading, setGateLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
@@ -267,7 +296,14 @@ function App() {
   const lastAction = useRef(Date.now());
   const orderKey = useRef<{ fingerprint: string; key: string } | null>(null);
   const fingerprint = JSON.stringify({ items, mode });
+  const fingerprintRef = useRef(fingerprint);
+  fingerprintRef.current = fingerprint;
+  const gateSeen = useRef(new Set<string>());
+  const gateRequest = useRef(0);
+  const gateDecisionKey = useRef<string | null>(null);
   const quote = priced?.fingerprint === fingerprint ? priced.quote : null;
+  const currentOffers =
+    offers?.fingerprint === fingerprint ? offers.values : [];
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
   const cartRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLElement>(null);
@@ -282,7 +318,7 @@ function App() {
   useEffect(() => {
     const controller = new AbortController();
     setError("");
-    setOffers([]);
+    setOffers(null);
     api<Quote>("quote", { items, mode }, controller.signal)
       .then((quote) => setPriced({ fingerprint, quote }))
       .catch((e) => {
@@ -295,7 +331,7 @@ function App() {
         { items, mode },
         controller.signal,
       )
-        .then((x) => setOffers(x.offers))
+        .then((x) => setOffers({ fingerprint, values: x.offers }))
         .catch(() => {});
     return () => controller.abort();
   }, [fingerprint]); // fingerprint includes all price-affecting input
@@ -308,6 +344,11 @@ function App() {
     setItems([]);
     setSelected(null);
     setCheckout(false);
+    setOfferGate(null);
+    setGateLoading(false);
+    gateSeen.current.clear();
+    gateRequest.current++;
+    gateDecisionKey.current = null;
     setOrder(null);
     setCategory("popular");
     setMode("dine-in");
@@ -324,7 +365,7 @@ function App() {
     window.addEventListener("pointerdown", touch);
     window.addEventListener("keydown", touch);
     const timer = setInterval(() => {
-      if ((items.length || order) && !busy) {
+      if ((items.length || order) && !busy && !gateLoading) {
         const elapsed = Date.now() - lastAction.current;
         if (elapsed > 180000) reset();
         else if (elapsed > 160000) setIdleWarning(true);
@@ -335,7 +376,7 @@ function App() {
       window.removeEventListener("pointerdown", touch);
       window.removeEventListener("keydown", touch);
     };
-  }, [items.length, order, busy]);
+  }, [items.length, order, busy, gateLoading]);
 
   function add(item: Item) {
     if (count >= 50) {
@@ -386,6 +427,155 @@ function App() {
         optionIds: [],
         combo: false,
       });
+  }
+  async function openCheckout() {
+    if (!catalog || !quote || !items.length || gateLoading) return;
+    const cartKey = JSON.stringify(items);
+    if (gateSeen.current.has(cartKey)) {
+      setCheckout(true);
+      return;
+    }
+    const requestId = ++gateRequest.current;
+    const requestFingerprint = fingerprint;
+    const baseTotal = quote.total;
+    const requestItems = items;
+    const requestMode = mode;
+    const requestCatalog = catalog;
+    setGateLoading(true);
+    try {
+      const priceSuggestions = async (suggestions: Offer[]) => {
+        const results = await Promise.all(
+          suggestions.slice(0, 2).map(async (offer) => {
+            const nextItems = applyKioskOffer(requestItems, offer);
+            if (!nextItems || kioskOfferCost(requestItems, offer) === null)
+              return null;
+            try {
+              const nextQuote = await api<Quote>("quote", {
+                items: nextItems,
+                mode: requestMode,
+              });
+              const delta = nextQuote.total - baseTotal;
+              if (!Number.isSafeInteger(delta) || delta <= 0) return null;
+              return { offer, items: nextItems, quote: nextQuote, delta };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        return results.filter(
+          (candidate): candidate is PricedKioskOffer => candidate !== null,
+        );
+      };
+      const nativeSuggestions = async () => {
+        if (offers?.fingerprint === requestFingerprint) return offers.values;
+        try {
+          return (
+            await api<{ offers: Offer[] }>("recommendations", {
+              items: requestItems,
+              mode: requestMode,
+            })
+          ).offers;
+        } catch {
+          return [];
+        }
+      };
+      const configured = readConfiguredKioskOffers(
+        requestCatalog,
+        requestItems,
+      );
+      const native = await nativeSuggestions();
+      let valid = await priceSuggestions(
+        kioskGateCandidates(requestCatalog, requestItems, configured, native),
+      );
+      if (configured.length && !valid.length)
+        valid = await priceSuggestions(
+          filterNativeKioskGateOffers(native, requestItems),
+        );
+      if (
+        requestId !== gateRequest.current ||
+        requestFingerprint !== fingerprintRef.current
+      )
+        return;
+      if (!valid.length) {
+        setCheckout(true);
+        return;
+      }
+      const fallbackChoice = cheaperKioskFallback(valid);
+      const fallback = fallbackChoice
+        ? (valid.find(
+            (candidate) => candidate.offer === fallbackChoice.offer,
+          ) ?? null)
+        : null;
+      const attemptId = crypto.randomUUID();
+      gateSeen.current.add(cartKey);
+      gateDecisionKey.current = null;
+      recordKioskOfferEvent({
+        type: "shown",
+        offerKey: kioskOfferKey(valid[0].offer),
+        attemptId,
+        at: Date.now(),
+      });
+      setOfferGate({
+        attemptId,
+        baseTotal,
+        active: valid[0],
+        fallback,
+        step: 0,
+      });
+    } catch {
+      if (
+        requestId === gateRequest.current &&
+        requestFingerprint === fingerprintRef.current
+      )
+        setCheckout(true);
+    } finally {
+      if (requestId === gateRequest.current) setGateLoading(false);
+    }
+  }
+  function declineGate(showFallback: boolean) {
+    if (!offerGate) return;
+    const decisionKey = `${offerGate.attemptId}:${offerGate.step}`;
+    if (gateDecisionKey.current === decisionKey) return;
+    gateDecisionKey.current = decisionKey;
+    recordKioskOfferEvent({
+      type: "declined",
+      offerKey: kioskOfferKey(offerGate.active.offer),
+      attemptId: offerGate.attemptId,
+      at: Date.now(),
+    });
+    if (showFallback && offerGate.step === 0 && offerGate.fallback) {
+      recordKioskOfferEvent({
+        type: "shown",
+        offerKey: kioskOfferKey(offerGate.fallback.offer),
+        attemptId: offerGate.attemptId,
+        at: Date.now(),
+      });
+      setOfferGate({
+        ...offerGate,
+        active: offerGate.fallback,
+        fallback: null,
+        step: 1,
+      });
+    } else {
+      setOfferGate(null);
+      setCheckout(true);
+    }
+  }
+  function acceptGate() {
+    if (!offerGate) return;
+    const decisionKey = `${offerGate.attemptId}:${offerGate.step}`;
+    if (gateDecisionKey.current === decisionKey) return;
+    gateDecisionKey.current = decisionKey;
+    recordKioskOfferEvent({
+      type: "accepted",
+      offerKey: kioskOfferKey(offerGate.active.offer),
+      attemptId: offerGate.attemptId,
+      at: Date.now(),
+    });
+    gateSeen.current.add(JSON.stringify(offerGate.active.items));
+    setItems(offerGate.active.items);
+    setOfferGate(null);
+    setCheckout(true);
   }
   async function submit() {
     if (busy || !quote) return;
@@ -469,6 +659,22 @@ function App() {
       : category === "combo"
         ? "Вместе вкуснее"
         : categories.find((c) => c.id === category)!.name;
+  const gateProduct = offerGate
+    ? catalog.products.find((p) => p.id === offerGate.active.offer.productId)
+    : null;
+  const gateQuantity =
+    offerGate?.active.offer.kind === "combo"
+      ? (items[offerGate.active.offer.itemIndex!]?.quantity ?? 1)
+      : 1;
+  const visibleOffers =
+    offers?.fingerprint === fingerprint && items.length
+      ? kioskGateCandidates(
+          catalog,
+          items,
+          readConfiguredKioskOffers(catalog, items),
+          currentOffers,
+        )
+      : [];
 
   return (
     <div className="app-shell">
@@ -771,12 +977,12 @@ function App() {
               })}
             </div>
           )}
-          {offers.length > 0 && items.length > 0 && (
+          {visibleOffers.length > 0 && (
             <section className="recommendations">
               <span className="eyebrow">
                 <Sparkles size={13} /> К ТВОЕМУ ЗАКАЗУ
               </span>
-              {offers.map((offer, index) => {
+              {visibleOffers.map((offer, index) => {
                 const p = catalog.products.find(
                   (p) => p.id === offer.productId,
                 )!;
@@ -822,10 +1028,16 @@ function App() {
           )}
           <button
             className="primary full"
-            disabled={!count || !quote}
-            onClick={() => setCheckout(true)}
+            disabled={!count || !quote || gateLoading}
+            onClick={openCheckout}
           >
-            <span>{count && !quote ? "Считаем заказ…" : "К оформлению"}</span>
+            <span>
+              {gateLoading
+                ? "Подбираем к заказу…"
+                : count && !quote
+                  ? "Считаем заказ…"
+                  : "К оформлению"}
+            </span>
             <ArrowRight size={21} />
           </button>
           <p className="demo-note">Демозаказ · без списания денег</p>
@@ -860,6 +1072,76 @@ function App() {
           onAdd={add}
         />
       )}
+      {offerGate && gateProduct && (
+        <Modal
+          label="Предложение перед оформлением"
+          onClose={() => declineGate(false)}
+        >
+          <div className="checkout-offer">
+            <span className="eyebrow orange">
+              <Sparkles size={15} />{" "}
+              {offerGate.step === 0 ? "К ТВОЕМУ ЗАКАЗУ" : "ВАРИАНТ ДЕШЕВЛЕ"}
+            </span>
+            <h2>
+              {offerGate.active.offer.kind === "combo"
+                ? "Сделаем комбо?"
+                : `Добавим ${gateProduct.name.toLowerCase()}?`}
+            </h2>
+            <div className="checkout-offer-art">
+              {offerGate.active.offer.kind === "combo" ? (
+                <ComboFood
+                  product={gateProduct}
+                  side={comboSide}
+                  drink={comboDrink}
+                />
+              ) : (
+                <Food index={gateProduct.image} />
+              )}
+            </div>
+            <p>{offerGate.active.offer.reason}</p>
+            {offerGate.active.offer.kind === "combo" && (
+              <p className="checkout-offer-detail">
+                Комбо на {gateQuantity} порц. · в каждом бургер, фри и кола
+              </p>
+            )}
+            <div className="checkout-offer-prices">
+              <div>
+                <span>Сейчас</span>
+                <b>{money(offerGate.baseTotal)}</b>
+              </div>
+              <div>
+                <span>
+                  Доплата{gateQuantity > 1 ? ` за ${gateQuantity} порции` : ""}
+                </span>
+                <b>+{money(offerGate.active.delta)}</b>
+              </div>
+              <div className="checkout-offer-total">
+                <span>Итого с предложением</span>
+                <strong>{money(offerGate.active.quote.total)}</strong>
+              </div>
+            </div>
+            <button className="primary full" onClick={acceptGate}>
+              Добавить и оформить <ArrowRight size={19} />
+            </button>
+            <button
+              className="text-button checkout-offer-decline"
+              onClick={() => declineGate(true)}
+            >
+              {offerGate.step === 0 && offerGate.fallback
+                ? "Нет, покажите вариант дешевле"
+                : "Нет, к оформлению"}
+            </button>
+            {offerGate.step === 0 && offerGate.fallback && (
+              <button
+                className="text-button checkout-offer-skip"
+                onClick={() => declineGate(false)}
+              >
+                Сразу к оформлению без предложения
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
       {checkout && (
         <Modal
           label="Оформление демозаказа"
@@ -888,7 +1170,7 @@ function App() {
             </div>
             <div className="total">
               <span>К оплате в демо</span>
-              <strong>{money(quote?.total ?? 0)}</strong>
+              <strong>{quote ? money(quote.total) : "Пересчитываем…"}</strong>
             </div>
             <div className="checkout-notice">
               <ShoppingBag size={22} />

@@ -984,6 +984,79 @@ h1 > span {
 .modal:has(.success) {
   max-width: 530px;
 }
+.modal:has(.checkout-offer) {
+  max-width: 520px;
+}
+.checkout-offer {
+  padding: 45px 35px 27px;
+  text-align: center;
+}
+.checkout-offer > .eyebrow {
+  justify-content: center;
+}
+.checkout-offer h2 {
+  font-size: 28px;
+  letter-spacing: -1px;
+  margin: 12px 0 18px;
+}
+.checkout-offer-art {
+  height: 176px;
+  border-radius: 15px;
+  background: #f3f0e8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.checkout-offer-art > .food {
+  width: 176px;
+}
+.checkout-offer-art > .combo-food {
+  height: 160px;
+  width: min(100%, 390px);
+  padding-top: 0;
+}
+.checkout-offer > p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #77836f;
+  margin: 15px 0 0;
+}
+.checkout-offer > .checkout-offer-detail {
+  margin-top: 5px;
+  font-size: 11px;
+}
+.checkout-offer-prices {
+  margin: 20px 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+.checkout-offer-prices > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 10px 1px;
+  font-size: 12px;
+}
+.checkout-offer-prices b {
+  font-size: 13px;
+}
+.checkout-offer-prices .checkout-offer-total {
+  border-top: 1px solid var(--border);
+  font-weight: 750;
+}
+.checkout-offer-total strong {
+  font-size: 19px;
+}
+.checkout-offer-decline {
+  margin-top: 8px;
+}
+.checkout-offer-skip {
+  margin-top: 0;
+  min-height: 34px;
+  font-size: 10px;
+  color: #829078;
+}
 .checkout > p {
   font-size: 13px;
   color: #8e947e;
@@ -1588,11 +1661,13 @@ h1 > span {
     max-height: calc(100dvh - 26px);
   }
   .checkout,
-  .success {
+  .success,
+  .checkout-offer {
     padding: 49px 25px 28px;
   }
   .checkout h2,
-  .success h2 {
+  .success h2,
+  .checkout-offer h2 {
     font-size: 26px;
   }
   .toast {

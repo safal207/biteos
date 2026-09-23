@@ -32,6 +32,20 @@ export type Dish = {
   section?: string;
   choice?: ChoiceTraits;
 };
+export type OfferRule = {
+  id: string;
+  triggerId: string;
+  addOnId: string;
+  active: boolean;
+};
+export type OfferEvent = {
+  id: string;
+  restaurantId: string;
+  ruleId: string;
+  type: "shown" | "accepted" | "declined";
+  attemptId: string;
+  at: number;
+};
 export type Restaurant = {
   id: string;
   name: string;
@@ -45,6 +59,7 @@ export type Restaurant = {
   eta: number;
   open: boolean;
   dishes: Dish[];
+  offerRules: OfferRule[];
 };
 export type CartLine = { productId: string; quantity: number };
 export type DeliveryStatus =
@@ -94,13 +109,18 @@ export type DeliveryState = {
   version: 1;
   restaurants: Restaurant[];
   orders: DeliveryOrder[];
+  offerEvents: OfferEvent[];
 };
 export type LegacyDeliveryState = Omit<
   DeliveryState,
-  "restaurants" | "orders"
+  "restaurants" | "orders" | "offerEvents"
 > & {
-  restaurants: (Omit<Restaurant, "currency"> & { currency?: Currency })[];
+  restaurants: (Omit<Restaurant, "currency" | "offerRules"> & {
+    currency?: Currency;
+    offerRules?: OfferRule[];
+  })[];
   orders: (Omit<DeliveryOrder, "currency"> & { currency?: Currency })[];
+  offerEvents?: OfferEvent[];
 };
 export type RestaurantInput = Pick<
   Restaurant,
@@ -122,6 +142,15 @@ export type DeliveryAction =
       input: Pick<Dish, "name" | "description" | "price" | "image">;
     }
   | { type: "dish.toggle"; restaurantId: string; productId: string }
+  | {
+      type: "offer.add";
+      restaurantId: string;
+      id: string;
+      triggerId: string;
+      addOnId: string;
+    }
+  | { type: "offer.toggle" | "offer.remove"; restaurantId: string; ruleId: string }
+  | { type: "offer.record"; event: OfferEvent }
   | {
       type: "order.place";
       restaurantId: string;
@@ -169,6 +198,32 @@ const robyDish = (
     sourceStatus: "confirmed",
   },
 });
+
+function defaultOfferRules(restaurantId: string, dishes: Dish[]): OfferRule[] {
+  const pairs =
+    restaurantId === "robys-coffee-house"
+      ? [
+          ["cold-coffee--iced-caffe-latte", "desserts--san-sebastian-cheesecake"],
+          ["cold-coffee--iced-caffe-latte", "desserts--macaron"],
+        ]
+      : restaurantId === "bite-burger"
+        ? [
+            ["smash", "fries"],
+            ["smash", "cola"],
+          ]
+        : [];
+  return pairs
+    .filter(([triggerId, addOnId]) =>
+      dishes.some((dish) => dish.id === triggerId) &&
+      dishes.some((dish) => dish.id === addOnId),
+    )
+    .map(([triggerId, addOnId]) => ({
+      id: `offer-${triggerId}-${addOnId}`,
+      triggerId,
+      addOnId,
+      active: true,
+    }));
+}
 
 export function robyRestaurant(): Restaurant {
   const dishes: Dish[] = [
@@ -313,6 +368,7 @@ export function robyRestaurant(): Restaurant {
     eta: 30,
     open: true,
     dishes,
+    offerRules: defaultOfferRules("robys-coffee-house", dishes),
   };
 }
 
@@ -340,6 +396,7 @@ export function initialDeliveryState(): DeliveryState {
   return {
     version: 1,
     orders: [],
+    offerEvents: [],
     restaurants: [
       {
         id: "bite-burger",
@@ -353,6 +410,7 @@ export function initialDeliveryState(): DeliveryState {
         eta: 30,
         open: true,
         dishes,
+        offerRules: defaultOfferRules("bite-burger", dishes),
       },
       {
         id: "crispy-club",
@@ -372,6 +430,7 @@ export function initialDeliveryState(): DeliveryState {
             ),
           ),
         ),
+        offerRules: [],
       },
       {
         id: "bbq-yard",
@@ -389,6 +448,7 @@ export function initialDeliveryState(): DeliveryState {
             ["bbq", "fries", "cola", "combo-bbq"].includes(d.id),
           ),
         ),
+        offerRules: [],
       },
       robyRestaurant(),
     ],
@@ -401,6 +461,9 @@ export function migrateDeliveryState(
   const restaurants = stored.restaurants.map((restaurant) => ({
     ...restaurant,
     currency: restaurant.currency ?? "RUB",
+    offerRules:
+      restaurant.offerRules ??
+      defaultOfferRules(restaurant.id, restaurant.dishes),
   }));
   if (
     !restaurants.some((restaurant) => restaurant.id === "robys-coffee-house")
@@ -410,6 +473,7 @@ export function migrateDeliveryState(
   return {
     version: 1,
     restaurants,
+    offerEvents: stored.offerEvents?.slice(0, 1000) ?? [],
     orders: stored.orders.map((order) => ({
       ...order,
       currency:
@@ -457,6 +521,68 @@ export function dishPrice(restaurant: Restaurant, dish: Dish): number {
       0,
     ) - (dish.discount ?? 0),
   );
+}
+
+function offerDishEligible(restaurant: Restaurant, dish: Dish | undefined): dish is Dish {
+  return Boolean(
+    dish &&
+      !dish.components &&
+      dishAvailable(restaurant, dish) &&
+      dishPrice(restaurant, dish) > 0 &&
+      (restaurant.id !== "robys-coffee-house" ||
+        dish.choice?.sourceStatus === "confirmed"),
+  );
+}
+
+export type CheckoutOffer = {
+  rule: OfferRule;
+  trigger: Dish;
+  dish: Dish;
+  price: number;
+};
+
+export function checkoutOffers(
+  restaurant: Restaurant,
+  items: CartLine[],
+): CheckoutOffer[] {
+  if (!restaurant.open || !items.length || items.length >= 50) return [];
+  if (
+    items.some(
+      (item) =>
+        !Number.isSafeInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 20 ||
+        !restaurant.dishes.some((dish) => dish.id === item.productId),
+    ) ||
+    new Set(items.map((item) => item.productId)).size !== items.length
+  ) return [];
+  const quantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  if (!Number.isSafeInteger(quantity) || quantity >= 50) return [];
+  const inCart = new Set(items.map((item) => item.productId));
+  const occupied = new Set(inCart);
+  for (const item of items) {
+    const dish = restaurant.dishes.find((candidate) => candidate.id === item.productId);
+    for (const componentId of dish?.components ?? []) occupied.add(componentId);
+  }
+  const seenAddOns = new Set<string>();
+  return restaurant.offerRules
+    .filter((rule) => rule.active && inCart.has(rule.triggerId) && !occupied.has(rule.addOnId))
+    .flatMap((rule) => {
+      const trigger = restaurant.dishes.find((dish) => dish.id === rule.triggerId);
+      const dish = restaurant.dishes.find((candidate) => candidate.id === rule.addOnId);
+      if (
+        rule.triggerId === rule.addOnId ||
+        !offerDishEligible(restaurant, trigger) ||
+        !offerDishEligible(restaurant, dish)
+      ) return [];
+      return [{ rule, trigger, dish, price: dishPrice(restaurant, dish) }];
+    })
+    .sort((left, right) => right.price - left.price || left.rule.id.localeCompare(right.rule.id))
+    .filter(({ dish }) => {
+      if (seenAddOns.has(dish.id)) return false;
+      seenAddOns.add(dish.id);
+      return true;
+    });
 }
 export function deliveryQuote(restaurant: Restaurant, items: CartLine[]) {
   if (!restaurant.open) throw new Error("Ресторан сейчас не принимает заказы");
@@ -532,6 +658,38 @@ export function applyDeliveryAction(
   at = new Date().toISOString(),
 ): DeliveryState {
   const state = structuredClone(current);
+  if (action.type === "offer.record") {
+    const event = action.event;
+    if (
+      !event ||
+      !["shown", "accepted", "declined"].includes(event.type) ||
+      !Number.isSafeInteger(event.at) ||
+      event.at < 0
+    ) throw new Error("Некорректное событие предложения");
+    text(event.id, 1, 160, "Некорректный ID события");
+    text(event.attemptId, 1, 160, "Некорректный ID попытки");
+    const restaurant = state.restaurants.find((entry) => entry.id === event.restaurantId);
+    if (!restaurant || !restaurant.offerRules.some((rule) => rule.id === event.ruleId))
+      throw new Error("Предложение не найдено");
+    if (state.offerEvents.some((entry) => entry.id === event.id))
+      throw new Error("Событие уже записано");
+    const previous = state.offerEvents.filter(
+      (entry) =>
+        entry.restaurantId === event.restaurantId &&
+        entry.ruleId === event.ruleId &&
+        entry.attemptId === event.attemptId,
+    );
+    if (event.type === "shown") {
+      if (previous.length) throw new Error("Предложение уже показано");
+    } else {
+      const shown = previous.find((entry) => entry.type === "shown");
+      if (!shown || previous.some((entry) => entry.type !== "shown") || event.at < shown.at)
+        throw new Error("Сначала покажите предложение");
+    }
+    state.offerEvents.unshift({ ...event });
+    state.offerEvents = state.offerEvents.slice(0, 1000);
+    return state;
+  }
   if (action.type === "restaurant.add") {
     if (state.restaurants.some((r) => r.id === action.id))
       throw new Error("Ресторан уже существует");
@@ -553,6 +711,7 @@ export function applyDeliveryAction(
       eta: amount(i.eta, 180, "Время доставки: от 10 до 180 минут", 10),
       open: true,
       dishes: [],
+      offerRules: [],
     };
     if (
       i.currency !== undefined &&
@@ -599,6 +758,43 @@ export function applyDeliveryAction(
       const dish = restaurant.dishes.find((d) => d.id === action.productId);
       if (!dish) throw new Error("Блюдо не найдено");
       dish.available = !dish.available;
+      return state;
+    }
+    if (action.type === "offer.add") {
+      const id = text(action.id, 1, 160, "Некорректный ID предложения");
+      if (restaurant.offerRules.length >= 30)
+        throw new Error("До 30 предложений на ресторан");
+      if (restaurant.offerRules.some((rule) => rule.id === id))
+        throw new Error("Предложение уже существует");
+      if (action.triggerId === action.addOnId)
+        throw new Error("Выберите два разных блюда");
+      const trigger = restaurant.dishes.find((dish) => dish.id === action.triggerId);
+      const addOn = restaurant.dishes.find((dish) => dish.id === action.addOnId);
+      if (!trigger || !addOn)
+        throw new Error("Выберите блюда этого ресторана");
+      if (!offerDishEligible(restaurant, trigger) || !offerDishEligible(restaurant, addOn))
+        throw new Error("Выберите доступные подтверждённые блюда, не комбо");
+      if (restaurant.offerRules.some(
+        (rule) => rule.triggerId === trigger.id && rule.addOnId === addOn.id,
+      )) throw new Error("Такая пара уже есть");
+      restaurant.offerRules.push({ id, triggerId: trigger.id, addOnId: addOn.id, active: true });
+      return state;
+    }
+    if (action.type === "offer.toggle" || action.type === "offer.remove") {
+      const index = restaurant.offerRules.findIndex((rule) => rule.id === action.ruleId);
+      if (index < 0) throw new Error("Предложение не найдено");
+      if (action.type === "offer.remove") {
+        restaurant.offerRules.splice(index, 1);
+      } else {
+        const rule = restaurant.offerRules[index];
+        if (!rule.active) {
+          const trigger = restaurant.dishes.find((dish) => dish.id === rule.triggerId);
+          const addOn = restaurant.dishes.find((dish) => dish.id === rule.addOnId);
+          if (!offerDishEligible(restaurant, trigger) || !offerDishEligible(restaurant, addOn))
+            throw new Error("Блюда недоступны или не подтверждены");
+        }
+        rule.active = !rule.active;
+      }
       return state;
     }
     if (action.type === "order.place") {

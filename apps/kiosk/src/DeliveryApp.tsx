@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  checkoutOffers,
   comboOffer,
   cuisines,
   deliveryQuote,
@@ -28,6 +29,7 @@ import {
   statusLabels,
 } from "./delivery";
 import { recommendRobys } from "./robysChoice";
+import { readKioskOfferEvents } from "./kioskOfferFlow";
 import type { ChoiceAnswers } from "./robysChoice";
 import type {
   CartLine,
@@ -42,6 +44,12 @@ import "./delivery.css";
 type View = "browse" | "orders" | "restaurant" | "courier";
 type Currency = "RUB" | "TRY";
 type StoreType = "all" | "cafe" | "fastfood";
+type OfferSession = {
+  attemptId: string;
+  cartKey: string;
+  ruleId: string;
+  step: 1 | 2;
+};
 const money = (minor: number, currency: Currency) =>
   `${new Intl.NumberFormat(currency === "TRY" ? "tr-TR" : "ru-RU", {
     maximumFractionDigits: 2,
@@ -50,6 +58,11 @@ const dishImage = () => ({
   backgroundImage: `url('${import.meta.env.BASE_URL}images/food-sheet.png')`,
 });
 const makeId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
+const cartKey = (restaurantId: string | null, items: CartLine[]) =>
+  `${restaurantId ?? ""}:${items
+    .map((item) => `${item.productId}=${item.quantity}`)
+    .sort()
+    .join("|")}`;
 const plural = (value: number, forms: [string, string, string]) => {
   const lastTwo = value % 100;
   const last = value % 10;
@@ -189,6 +202,17 @@ export function DeliveryApp() {
   const [address, setAddress] = useState(demoAddresses[0]);
   const [notice, setNotice] = useState("");
   const [checkout, setCheckout] = useState(false);
+  const [offerSession, setOfferSession] = useState<OfferSession | null>(null);
+  const [declinedOffers, setDeclinedOffers] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [declinedPriceCeilings, setDeclinedPriceCeilings] = useState<
+    Record<string, number>
+  >({});
+  const [completedOfferCartKey, setCompletedOfferCartKey] = useState<string | null>(
+    null,
+  );
+  const offerBusyRef = useRef(false);
   const [managerId, setManagerId] = useState("");
   const [showRestaurantForm, setShowRestaurantForm] = useState(false);
   const [showDishForm, setShowDishForm] = useState(false);
@@ -209,6 +233,7 @@ export function DeliveryApp() {
     price: "",
     image: "0",
   });
+  const [offerForm, setOfferForm] = useState({ triggerId: "", addOnId: "" });
   const [choiceAnswers, setChoiceAnswers] = useState<ChoiceAnswers>({
     intent: "coffee",
     temperature: "any",
@@ -275,6 +300,48 @@ export function DeliveryApp() {
   const offer = cartRestaurant ? comboOffer(cartRestaurant, cart) : null;
   const offerQuantity = offer ? (cart[offer.index]?.quantity ?? 0) : 0;
   const count = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const currentCartKey = cartKey(cartRestaurantId, cart);
+  const checkoutCandidates = useMemo(
+    () => (cartRestaurant && quote ? checkoutOffers(cartRestaurant, cart) : []),
+    [cartRestaurant, cart, quote],
+  );
+  const activeCheckoutOffer =
+    offerSession?.cartKey === currentCartKey
+      ? checkoutCandidates.find((candidate) =>
+          candidate.rule.id === offerSession.ruleId,
+        )
+      : null;
+  const managerOfferEvents = state.offerEvents.filter(
+    (event) => event.restaurantId === manager?.id,
+  );
+  const offerStat = (type: "shown" | "accepted" | "declined") =>
+    managerOfferEvents.filter((event) => event.type === type).length;
+  const managerOfferDishes =
+    manager?.dishes.filter(
+      (dish) =>
+        !dish.components &&
+        dishAvailable(manager, dish) &&
+        (!dish.choice || dish.choice.sourceStatus === "confirmed"),
+    ) ?? [];
+  const offerTriggerId = managerOfferDishes.some(
+    (dish) => dish.id === offerForm.triggerId,
+  )
+    ? offerForm.triggerId
+    : (managerOfferDishes[0]?.id ?? "");
+  const offerAddOnId = managerOfferDishes.some(
+    (dish) => dish.id === offerForm.addOnId && dish.id !== offerTriggerId,
+  )
+    ? offerForm.addOnId
+    : (managerOfferDishes.find((dish) => dish.id !== offerTriggerId)?.id ?? "");
+  const offerPairExists =
+    manager?.offerRules.some(
+      (rule) =>
+        rule.triggerId === offerTriggerId && rule.addOnId === offerAddOnId,
+    ) ?? false;
+  const kioskOfferEvents =
+    manager?.id === "bite-burger" ? readKioskOfferEvents() : [];
+  const kioskOfferStat = (type: "shown" | "accepted" | "declined") =>
+    kioskOfferEvents.filter((event) => event.type === type).length;
 
   function go(next: View) {
     clearError();
@@ -292,6 +359,10 @@ export function DeliveryApp() {
     if (resetDemo()) {
       setCart([]);
       setCartRestaurantId(null);
+      setOfferSession(null);
+      setDeclinedOffers({});
+      setDeclinedPriceCeilings({});
+      setCompletedOfferCartKey(null);
       setSelectedId(null);
       setManagerId("");
       go("browse");
@@ -299,6 +370,7 @@ export function DeliveryApp() {
     }
   }
   function changeCart(restaurant: Restaurant, dish: Dish, amount: number) {
+    if (offerBusyRef.current) return;
     if (amount > 0 && !restaurant.open) {
       setNotice("Ресторан сейчас закрыт");
       return;
@@ -326,6 +398,8 @@ export function DeliveryApp() {
       );
     }
     setNotice("");
+    setOfferSession(null);
+    setCheckout(false);
     setCartRestaurantId(restaurant.id);
     setCart((previous) => {
       const current = previous.find((line) => line.productId === dish.id);
@@ -350,7 +424,9 @@ export function DeliveryApp() {
     });
   }
   function takeCombo() {
-    if (!offer || !cartRestaurant) return;
+    if (!offer || !cartRestaurant || offerBusyRef.current) return;
+    setOfferSession(null);
+    setCheckout(false);
     setCart((previous) =>
       previous.map((line, index) =>
         index === offer.index ? { ...line, productId: offer.combo.id } : line,
@@ -359,6 +435,161 @@ export function DeliveryApp() {
     setNotice(
       `Комбо добавлено. Экономия ${money((offer.combo.discount ?? 0) * offerQuantity, cartRestaurant.currency)}!`,
     );
+  }
+  async function recordOfferEvent(
+    restaurantId: string,
+    ruleId: string,
+    type: "shown" | "accepted" | "declined",
+    attemptId: string,
+  ) {
+    return dispatch({
+      type: "offer.record",
+      event: {
+        id: makeId("offer-event"),
+        restaurantId,
+        ruleId,
+        type,
+        attemptId,
+        at: Date.now(),
+      },
+    });
+  }
+  async function startCheckout() {
+    if (
+      !cartRestaurant ||
+      !quote ||
+      quote.missing > 0 ||
+      !cart.length ||
+      pending ||
+      offerBusyRef.current
+    )
+      return;
+    if (completedOfferCartKey === currentCartKey) {
+      setCheckout(true);
+      return;
+    }
+    const declined = declinedOffers[currentCartKey] ?? [];
+    const priceCeiling = declinedPriceCeilings[currentCartKey];
+    const candidate = checkoutCandidates.find(
+      (item) =>
+        !declined.includes(item.rule.id) &&
+        (priceCeiling === undefined || item.price < priceCeiling),
+    );
+    if (!candidate) {
+      setCheckout(true);
+      return;
+    }
+    const attemptId = makeId("offer-attempt");
+    offerBusyRef.current = true;
+    try {
+      const recorded = await recordOfferEvent(
+        cartRestaurant.id,
+        candidate.rule.id,
+        "shown",
+        attemptId,
+      );
+      if (recorded) {
+        setOfferSession({
+          attemptId,
+          cartKey: currentCartKey,
+          ruleId: candidate.rule.id,
+          step: 1,
+        });
+      }
+    } finally {
+      offerBusyRef.current = false;
+    }
+  }
+  async function acceptCheckoutOffer() {
+    if (
+      !cartRestaurant ||
+      !offerSession ||
+      !activeCheckoutOffer ||
+      offerBusyRef.current
+    )
+      return;
+    offerBusyRef.current = true;
+    try {
+      const recorded = await recordOfferEvent(
+        cartRestaurant.id,
+        activeCheckoutOffer.rule.id,
+        "accepted",
+        offerSession.attemptId,
+      );
+      if (!recorded) return;
+      const nextCart = [
+        ...cart,
+        { productId: activeCheckoutOffer.dish.id, quantity: 1 },
+      ];
+      setCart(nextCart);
+      setCompletedOfferCartKey(cartKey(cartRestaurant.id, nextCart));
+      setOfferSession(null);
+      setCheckout(true);
+      setNotice(`${activeCheckoutOffer.dish.name} добавлено: 1 порция.`);
+    } finally {
+      offerBusyRef.current = false;
+    }
+  }
+  async function declineCheckoutOffer(showFallback = true) {
+    if (
+      !cartRestaurant ||
+      !offerSession ||
+      !activeCheckoutOffer ||
+      offerBusyRef.current
+    )
+      return;
+    offerBusyRef.current = true;
+    try {
+      const recorded = await recordOfferEvent(
+        cartRestaurant.id,
+        activeCheckoutOffer.rule.id,
+        "declined",
+        offerSession.attemptId,
+      );
+      if (!recorded) return;
+      const declined = [
+        ...new Set([
+          ...(declinedOffers[currentCartKey] ?? []),
+          activeCheckoutOffer.rule.id,
+        ]),
+      ];
+      setDeclinedOffers((previous) => ({
+        ...previous,
+        [currentCartKey]: declined,
+      }));
+      setDeclinedPriceCeilings((previous) => ({
+        ...previous,
+        [currentCartKey]: Math.min(
+          previous[currentCartKey] ?? Number.POSITIVE_INFINITY,
+          activeCheckoutOffer.price,
+        ),
+      }));
+      const fallback =
+        showFallback && offerSession.step === 1
+          ? checkoutCandidates.find(
+              (item) =>
+                item.price < activeCheckoutOffer.price &&
+                !declined.includes(item.rule.id),
+            )
+          : null;
+      if (fallback) {
+        const shown = await recordOfferEvent(
+          cartRestaurant.id,
+          fallback.rule.id,
+          "shown",
+          offerSession.attemptId,
+        );
+        if (shown) {
+          setOfferSession({ ...offerSession, ruleId: fallback.rule.id, step: 2 });
+          return;
+        }
+      }
+      setOfferSession(null);
+      setCompletedOfferCartKey(currentCartKey);
+      setCheckout(true);
+    } finally {
+      offerBusyRef.current = false;
+    }
   }
   async function placeOrder() {
     if (!cartRestaurant || !quote || quote.missing || !cart.length) return;
@@ -374,6 +605,8 @@ export function DeliveryApp() {
       setCart([]);
       setCartRestaurantId(null);
       setCheckout(false);
+      setOfferSession(null);
+      setCompletedOfferCartKey(null);
       go("orders");
       setNotice("Заказ оформлен! Следи за его статусом здесь.");
     }
@@ -430,6 +663,18 @@ export function DeliveryApp() {
       setDishForm({ name: "", description: "", price: "", image: "0" });
       setNotice("Блюдо появилось в меню ресторана.");
     }
+  }
+  async function addOfferRule(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!manager || !offerTriggerId || !offerAddOnId) return;
+    const ok = await dispatch({
+      type: "offer.add",
+      restaurantId: manager.id,
+      id: makeId("offer-rule"),
+      triggerId: offerTriggerId,
+      addOnId: offerAddOnId,
+    });
+    if (ok) setNotice("Пара добавлена. Предложение появится перед оформлением заказа.");
   }
 
   return (
@@ -1239,11 +1484,86 @@ export function DeliveryApp() {
                           Вернуться в корзину
                         </button>
                       </div>
+                    ) : activeCheckoutOffer ? (
+                      <section className="delivery-checkout-offer" aria-live="polite">
+                        <span className="delivery-offer-kicker">
+                          <Sparkles size={17} />
+                          {offerSession?.step === 2
+                            ? "ЕЩЁ ОДИН ВАРИАНТ"
+                            : "ПОДОЙДЁТ К ЗАКАЗУ"}
+                        </span>
+                        <h3>Добавить к «{activeCheckoutOffer.trigger.name}»?</h3>
+                        <div className="delivery-checkout-offer-dish">
+                          <Food
+                            image={activeCheckoutOffer.dish.image}
+                            photo={activeCheckoutOffer.dish.photo}
+                          />
+                          <div>
+                            <strong>{activeCheckoutOffer.dish.name}</strong>
+                            <small>1 порция · можно пропустить</small>
+                          </div>
+                        </div>
+                        <div className="delivery-checkout-offer-prices">
+                          <div>
+                            <span>Доплата за 1 порцию</span>
+                            <strong>
+                              +{money(activeCheckoutOffer.price, cartRestaurant.currency)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Новый итог с доставкой</span>
+                            <strong>
+                              {money(quote.total + activeCheckoutOffer.price, cartRestaurant.currency)}
+                            </strong>
+                          </div>
+                        </div>
+                        <button
+                          className="delivery-primary"
+                          disabled={pending}
+                          onClick={() => void acceptCheckoutOffer()}
+                        >
+                          Добавить 1 порцию <Plus size={18} />
+                        </button>
+                        <button
+                          className="delivery-offer-decline"
+                          disabled={pending}
+                          onClick={() => void declineCheckoutOffer()}
+                        >
+                          {offerSession?.step === 2
+                            ? "Продолжить без дополнения"
+                            : "Не подходит"}
+                        </button>
+                        {offerSession?.step === 1 && (
+                          <button
+                            className="delivery-link-button"
+                            disabled={pending}
+                            onClick={() => void declineCheckoutOffer(false)}
+                          >
+                            Сразу к оформлению
+                          </button>
+                        )}
+                        {offerSession?.step === 1 && (
+                          <p>
+                            Если есть более доступное дополнение, покажем его
+                            один раз.
+                          </p>
+                        )}
+                        <button
+                          className="delivery-link-button"
+                          disabled={pending}
+                          onClick={() => {
+                            setCompletedOfferCartKey(currentCartKey);
+                            setOfferSession(null);
+                          }}
+                        >
+                          Вернуться в корзину
+                        </button>
+                      </section>
                     ) : (
                       <button
                         className="delivery-primary"
-                        disabled={quote.missing > 0}
-                        onClick={() => setCheckout(true)}
+                        disabled={pending || quote.missing > 0}
+                        onClick={() => void startCheckout()}
                       >
                         Оформить заказ <ArrowRight size={18} />
                       </button>
@@ -1260,6 +1580,7 @@ export function DeliveryApp() {
                     setCart([]);
                     setCartRestaurantId(null);
                     setCheckout(false);
+                    setOfferSession(null);
                   }}
                 >
                   Очистить корзину
@@ -1684,6 +2005,202 @@ export function DeliveryApp() {
                     </div>
                   ))}
                 </div>
+                <div className="delivery-manager-section-head">
+                  <div>
+                    <span className="delivery-kicker">ПЕРЕД ОФОРМЛЕНИЕМ</span>
+                    <h2>
+                      Подходящие дополнения <span>{manager.offerRules.length}</span>
+                    </h2>
+                  </div>
+                </div>
+                <section className="delivery-panel delivery-offer-manager">
+                  <p className="delivery-muted">
+                    Свяжи два блюда своего меню. Когда первое окажется в корзине,
+                    гостю можно предложить одну порцию второго с точной доплатой.
+                  </p>
+                  <p className="delivery-demo-hint">
+                    {manager.id === "bite-burger"
+                      ? "На большом табло работают пары из исходного каталога Bite Burger. Пары с блюдами, добавленными вручную, пока работают только в доставке."
+                      : "Для этого ресторана пары пока работают только в доставке; большое табло подключено к Bite Burger."}
+                  </p>
+                  <form className="delivery-offer-editor" onSubmit={addOfferRule}>
+                    <label>
+                      После блюда
+                      <select
+                        value={offerTriggerId}
+                        disabled={managerOfferDishes.length < 2 || pending}
+                        onChange={(event) =>
+                          setOfferForm((previous) => ({
+                            triggerId: event.target.value,
+                            addOnId:
+                              previous.addOnId === event.target.value
+                                ? ""
+                                : previous.addOnId,
+                          }))
+                        }
+                      >
+                        {managerOfferDishes.map((dish) => (
+                          <option key={dish.id} value={dish.id}>
+                            {dish.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Предложить дополнение
+                      <select
+                        value={offerAddOnId}
+                        disabled={managerOfferDishes.length < 2 || pending}
+                        onChange={(event) =>
+                          setOfferForm((previous) => ({
+                            ...previous,
+                            addOnId: event.target.value,
+                          }))
+                        }
+                      >
+                        {managerOfferDishes
+                          .filter((dish) => dish.id !== offerTriggerId)
+                          .map((dish) => (
+                            <option key={dish.id} value={dish.id}>
+                              {dish.name} · {money(dishPrice(manager, dish), manager.currency)}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <button
+                      className="delivery-primary"
+                      type="submit"
+                      disabled={
+                        pending ||
+                        !offerTriggerId ||
+                        !offerAddOnId ||
+                        offerPairExists ||
+                        manager.offerRules.length >= 30
+                      }
+                    >
+                      Добавить пару <Plus size={18} />
+                    </button>
+                  </form>
+                  {managerOfferDishes.length < 2 && (
+                    <p className="delivery-demo-hint">
+                      Для пары нужны хотя бы два доступных блюда, не комбо.
+                    </p>
+                  )}
+                  {offerPairExists && (
+                    <p className="delivery-demo-hint">Такая пара уже есть в списке.</p>
+                  )}
+                  <div className="delivery-offer-rules">
+                    {manager.offerRules.map((rule) => {
+                      const trigger = manager.dishes.find(
+                        (dish) => dish.id === rule.triggerId,
+                      );
+                      const addOn = manager.dishes.find(
+                        (dish) => dish.id === rule.addOnId,
+                      );
+                      const events = managerOfferEvents.filter(
+                        (event) => event.ruleId === rule.id,
+                      );
+                      return (
+                        <div className="delivery-offer-rule" key={rule.id}>
+                          <div>
+                            <strong>
+                              {trigger?.name ?? "Блюдо удалено"} <ArrowRight size={14} />{" "}
+                              {addOn?.name ?? "Дополнение удалено"}
+                            </strong>
+                            <small>
+                              {addOn
+                                ? `+${money(dishPrice(manager, addOn), manager.currency)} за 1 порцию`
+                                : "Недоступно"}
+                              {" · "}Показано {events.filter((event) => event.type === "shown").length}
+                              {" · "}Добавлено {events.filter((event) => event.type === "accepted").length}
+                            </small>
+                          </div>
+                          <div className="delivery-offer-rule-actions">
+                            <button
+                              className={`delivery-availability ${rule.active ? "available" : ""}`}
+                              disabled={pending}
+                              aria-label={`${rule.active ? "Выключить" : "Включить"} пару ${trigger?.name ?? ""} — ${addOn?.name ?? ""}`}
+                              onClick={() =>
+                                void dispatch({
+                                  type: "offer.toggle",
+                                  restaurantId: manager.id,
+                                  ruleId: rule.id,
+                                })
+                              }
+                            >
+                              {rule.active ? "Включено" : "Выключено"}
+                            </button>
+                            <button
+                              className="delivery-offer-remove"
+                              disabled={pending}
+                              aria-label={`Удалить пару ${trigger?.name ?? ""} — ${addOn?.name ?? ""}`}
+                              onClick={() =>
+                                void dispatch({
+                                  type: "offer.remove",
+                                  restaurantId: manager.id,
+                                  ruleId: rule.id,
+                                })
+                              }
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {!manager.offerRules.length && (
+                      <p className="delivery-muted">Пары ещё не созданы.</p>
+                    )}
+                  </div>
+                </section>
+                <section className="delivery-offer-analytics delivery-panel">
+                  <div>
+                    <span className="delivery-kicker">ДЕМОСТАТИСТИКА ЭТОЙ ВКЛАДКИ</span>
+                    <h3>Предложения доставки · {manager.name}</h3>
+                  </div>
+                  <div className="delivery-offer-stats">
+                    <div><span>Показано</span><strong>{offerStat("shown")}</strong></div>
+                    <div><span>Добавлено</span><strong>{offerStat("accepted")}</strong></div>
+                    <div><span>Отклонено</span><strong>{offerStat("declined")}</strong></div>
+                    <div>
+                      <span>Доля добавлений от показов</span>
+                      <strong>
+                        {offerStat("shown")
+                          ? `${Math.round((offerStat("accepted") / offerStat("shown")) * 100)}%`
+                          : "—"}
+                      </strong>
+                    </div>
+                  </div>
+                  <p className="delivery-demo-hint">
+                    Показ — появление предложения, добавление — выбор гостя.
+                    Это не оплаченные продажи. История включает удалённые пары.
+                  </p>
+                </section>
+                {manager.id === "bite-burger" && (
+                  <section className="delivery-offer-analytics delivery-panel">
+                    <div>
+                      <span className="delivery-kicker">ОТДЕЛЬНО · ДЕМО ЭТОЙ ВКЛАДКИ</span>
+                      <h3>Предложения на большом табло</h3>
+                    </div>
+                    <div className="delivery-offer-stats">
+                      <div><span>Показано</span><strong>{kioskOfferStat("shown")}</strong></div>
+                      <div><span>Добавлено</span><strong>{kioskOfferStat("accepted")}</strong></div>
+                      <div><span>Отклонено</span><strong>{kioskOfferStat("declined")}</strong></div>
+                      <div>
+                        <span>Доля добавлений от показов</span>
+                        <strong>
+                          {kioskOfferStat("shown")
+                            ? `${Math.round((kioskOfferStat("accepted") / kioskOfferStat("shown")) * 100)}%`
+                            : "—"}
+                        </strong>
+                      </div>
+                    </div>
+                    <p className="delivery-demo-hint">
+                      Локальные действия на табло. Эти числа не смешиваются с
+                      доставкой и не подтверждают оплату.
+                    </p>
+                  </section>
+                )}
                 <div className="delivery-manager-section-head">
                   <div>
                     <span className="delivery-kicker">НА КУХНЕ</span>

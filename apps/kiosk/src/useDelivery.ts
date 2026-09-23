@@ -22,6 +22,8 @@ const validCurrency = (value: unknown) => value === "RUB" || value === "TRY";
 const validPhoto = (value: unknown) =>
   typeof value === "string" &&
   /^images\/robys\/(?:menu-v1|sets-v1)\/[a-z0-9-]+\.webp$/.test(value);
+const validId = (value: unknown) =>
+  str(value) && value.trim().length > 0 && value.length <= 160;
 function validState(value: unknown): value is LegacyDeliveryState {
   if (
     !object(value) ||
@@ -80,7 +82,23 @@ function validState(value: unknown): value is LegacyDeliveryState {
           (d.components === undefined ||
             (Array.isArray(d.components) && d.components.every(str))) &&
           (d.discount === undefined || validMoney(d.discount)),
-      ),
+      ) &&
+      (r.offerRules === undefined ||
+        (Array.isArray(r.offerRules) &&
+          r.offerRules.length <= 30 &&
+          r.offerRules.every(
+            (rule: unknown) =>
+              object(rule) &&
+              validId(rule.id) &&
+              validId(rule.triggerId) &&
+              validId(rule.addOnId) &&
+              rule.triggerId !== rule.addOnId &&
+              typeof rule.active === "boolean" &&
+              (r.dishes as unknown[]).some((dish) => object(dish) && dish.id === rule.triggerId) &&
+              (r.dishes as unknown[]).some((dish) => object(dish) && dish.id === rule.addOnId),
+          ) &&
+          new Set(r.offerRules.map((rule: { id: string }) => rule.id)).size ===
+            r.offerRules.length)),
   );
   const orders = value.orders.every(
     (o: unknown) =>
@@ -118,7 +136,21 @@ function validState(value: unknown): value is LegacyDeliveryState {
           str(h.at),
       ),
   );
-  return restaurants && orders;
+  const offerEvents =
+    value.offerEvents === undefined ||
+    (Array.isArray(value.offerEvents) &&
+      value.offerEvents.length <= 5000 &&
+      value.offerEvents.every(
+        (event: unknown) =>
+          object(event) &&
+          validId(event.id) &&
+          validId(event.restaurantId) &&
+          validId(event.ruleId) &&
+          validId(event.attemptId) &&
+          ["shown", "accepted", "declined"].includes(String(event.type)) &&
+          validMoney(event.at),
+      ));
+  return restaurants && orders && offerEvents;
 }
 function readState(): DeliveryState {
   const raw = sessionStorage.getItem(key);

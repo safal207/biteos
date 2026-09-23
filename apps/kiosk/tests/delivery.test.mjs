@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyDeliveryAction,
+  checkoutOffers,
   comboOffer,
   deliveryQuote,
   dishAvailable,
@@ -542,4 +543,170 @@ test("invalid quantities, minima, totals and form fields are rejected", () => {
       }),
     );
   }
+});
+
+test("checkout offers use current menu prices, stock and one cheaper fallback", () => {
+  let state = initialDeliveryState();
+  const burger = restaurant(state);
+  const items = [{ productId: "smash", quantity: 1 }];
+  assert.deepEqual(
+    checkoutOffers(burger, items).map(({ dish, price }) => [dish.id, price]),
+    [["fries", 14900], ["cola", 12900]],
+  );
+  assert.equal(checkoutOffers(burger, items)[0].rule.id, "offer-smash-fries");
+  assert.deepEqual(
+    checkoutOffers(burger, [...items, { productId: "fries", quantity: 1 }])
+      .map(({ dish }) => dish.id),
+    ["cola"],
+  );
+  assert.deepEqual(
+    checkoutOffers(burger, [{ productId: "combo-smash", quantity: 1 }]),
+    [],
+  );
+  assert.deepEqual(
+    checkoutOffers(burger, [...items, { productId: "combo-smash", quantity: 1 }]),
+    [],
+  );
+  assert.deepEqual(
+    checkoutOffers(burger, [{ productId: "smash", quantity: 50 }]),
+    [],
+  );
+  state = applyDeliveryAction(state, {
+    type: "dish.toggle", restaurantId: burger.id, productId: "fries",
+  });
+  assert.deepEqual(
+    checkoutOffers(restaurant(state), items).map(({ dish }) => dish.id),
+    ["cola"],
+  );
+  state = structuredClone(state);
+  restaurant(state).dishes.find((dish) => dish.id === "cola").price = 9900;
+  assert.equal(checkoutOffers(restaurant(state), items)[0].price, 9900);
+  state = applyDeliveryAction(initialDeliveryState(), {
+    type: "offer.add", restaurantId: "bite-burger", id: "offer-chicken-fries",
+    triggerId: "chicken", addOnId: "fries",
+  });
+  assert.deepEqual(
+    checkoutOffers(restaurant(state), [
+      { productId: "smash", quantity: 1 },
+      { productId: "chicken", quantity: 1 },
+    ]).map(({ dish }) => dish.id),
+    ["fries", "cola"],
+  );
+});
+
+test("Roby's checkout suggestions are confirmed additions at TRY menu prices", () => {
+  const state = initialDeliveryState();
+  const roby = restaurant(state, "robys-coffee-house");
+  const items = [{ productId: "cold-coffee--iced-caffe-latte", quantity: 1 }];
+  assert.equal(roby.currency, "TRY");
+  assert.deepEqual(
+    checkoutOffers(roby, items).map(({ dish, price }) => [dish.id, price]),
+    [
+      ["desserts--san-sebastian-cheesecake", 19000],
+      ["desserts--macaron", 3000],
+    ],
+  );
+  const provisional = structuredClone(roby);
+  provisional.dishes.find((dish) => dish.id === "desserts--san-sebastian-cheesecake")
+    .choice.sourceStatus = "provisional";
+  assert.deepEqual(
+    checkoutOffers(provisional, items).map(({ dish }) => dish.id),
+    ["desserts--macaron"],
+  );
+  const outOfStock = structuredClone(roby);
+  outOfStock.dishes.find((dish) => dish.id === "desserts--macaron").available = false;
+  assert.deepEqual(
+    checkoutOffers(outOfStock, items).map(({ dish }) => dish.id),
+    ["desserts--san-sebastian-cheesecake"],
+  );
+});
+
+test("merchant rules require distinct available items from the same restaurant", () => {
+  let state = initialDeliveryState();
+  const add = (patch = {}) => applyDeliveryAction(state, {
+    type: "offer.add",
+    restaurantId: "robys-coffee-house",
+    id: "offer-latte-lotus",
+    triggerId: "cold-coffee--iced-caffe-latte",
+    addOnId: "desserts--lotus-cheesecake",
+    ...patch,
+  });
+  assert.throws(() => add({ addOnId: "smash" }), /этого ресторана/);
+  assert.throws(() => add({ addOnId: "cold-coffee--iced-caffe-latte" }), /разных/);
+  assert.throws(() => add({ addOnId: "combo-iced-san-sebastian" }), /не комбо/);
+  const unavailable = structuredClone(state);
+  restaurant(unavailable, "robys-coffee-house").dishes
+    .find((dish) => dish.id === "desserts--lotus-cheesecake").available = false;
+  assert.throws(() => applyDeliveryAction(unavailable, {
+    type: "offer.add", restaurantId: "robys-coffee-house", id: "new",
+    triggerId: "cold-coffee--iced-caffe-latte", addOnId: "desserts--lotus-cheesecake",
+  }), /доступные/);
+  const provisional = structuredClone(state);
+  restaurant(provisional, "robys-coffee-house").dishes
+    .find((dish) => dish.id === "desserts--lotus-cheesecake")
+    .choice.sourceStatus = "provisional";
+  assert.throws(() => applyDeliveryAction(provisional, {
+    type: "offer.add", restaurantId: "robys-coffee-house", id: "new",
+    triggerId: "cold-coffee--iced-caffe-latte", addOnId: "desserts--lotus-cheesecake",
+  }), /подтверждённые/);
+  state = add();
+  assert.equal(restaurant(state, "robys-coffee-house").offerRules.length, 3);
+  assert.throws(() => add({ id: "another-id" }), /пара уже есть/);
+  state = applyDeliveryAction(state, {
+    type: "offer.toggle", restaurantId: "robys-coffee-house", ruleId: "offer-latte-lotus",
+  });
+  assert.equal(restaurant(state, "robys-coffee-house").offerRules.at(-1).active, false);
+  state = applyDeliveryAction(state, {
+    type: "offer.remove", restaurantId: "robys-coffee-house", ruleId: "offer-latte-lotus",
+  });
+  assert.equal(restaurant(state, "robys-coffee-house").offerRules.length, 2);
+});
+
+test("offer analytics record one shown and one decision per attempt", () => {
+  let state = initialDeliveryState();
+  const shown = {
+    id: "shown-1", restaurantId: "bite-burger", ruleId: "offer-smash-fries",
+    type: "shown", attemptId: "attempt-1", at: 1000,
+  };
+  assert.throws(() => applyDeliveryAction(state, {
+    type: "offer.record", event: { ...shown, id: "accepted-early", type: "accepted" },
+  }), /Сначала покажите/);
+  state = applyDeliveryAction(state, { type: "offer.record", event: shown });
+  assert.throws(() => applyDeliveryAction(state, {
+    type: "offer.record", event: { ...shown, id: "shown-2" },
+  }), /уже показано/);
+  state = applyDeliveryAction(state, {
+    type: "offer.record", event: { ...shown, id: "declined-1", type: "declined", at: 1001 },
+  });
+  assert.throws(() => applyDeliveryAction(state, {
+    type: "offer.record", event: { ...shown, id: "accepted-late", type: "accepted", at: 1002 },
+  }), /Сначала покажите/);
+  state = applyDeliveryAction(state, {
+    type: "offer.record", event: {
+      ...shown, id: "shown-cheaper", ruleId: "offer-smash-cola", at: 1002,
+    },
+  });
+  state = applyDeliveryAction(state, {
+    type: "offer.record", event: {
+      ...shown, id: "accepted-cheaper", ruleId: "offer-smash-cola",
+      type: "accepted", at: 1003,
+    },
+  });
+  assert.deepEqual(state.offerEvents.map((event) => event.type),
+    ["accepted", "shown", "declined", "shown"]);
+});
+
+test("old delivery sessions gain offer rules and events without losing orders", () => {
+  const old = structuredClone(place(initialDeliveryState()));
+  delete old.offerEvents;
+  for (const entry of old.restaurants) delete entry.offerRules;
+  const migrated = migrateDeliveryState(old);
+  assert.equal(migrated.orders[0].id, "order-1");
+  assert.equal(migrated.offerEvents.length, 0);
+  assert.equal(restaurant(migrated).offerRules.length, 2);
+  assert.equal(restaurant(migrated, "robys-coffee-house").offerRules.length, 2);
+  const removed = applyDeliveryAction(migrated, {
+    type: "offer.remove", restaurantId: "bite-burger", ruleId: "offer-smash-fries",
+  });
+  assert.equal(restaurant(migrateDeliveryState(removed)).offerRules.length, 1);
 });

@@ -1980,3 +1980,255 @@
     opacity: 0.35;
   }
 }
+
+.delivery-checkout-offer {
+  display: grid;
+  gap: 12px;
+  margin-top: 7px;
+  padding: 16px;
+  border: 1px solid #e7cba5;
+  border-radius: 15px;
+  background: #fff7e9;
+}
+.delivery-offer-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a75d34;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+.delivery-checkout-offer h3 {
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+}
+.delivery-checkout-offer-dish {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 9px;
+  border-radius: 11px;
+  background: #fffefa;
+}
+.delivery-checkout-offer-dish > .food,
+.delivery-checkout-offer-dish > .delivery-photo {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 9px;
+  object-fit: cover;
+}
+.delivery-checkout-offer-dish > div:last-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.delivery-checkout-offer-dish strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+.delivery-checkout-offer-dish small {
+  color: #927d68;
+  font-size: 10px;
+}
+.delivery-checkout-offer-prices {
+  display: grid;
+  gap: 8px;
+  padding: 11px 0;
+  border-top: 1px solid #ecdcc4;
+  border-bottom: 1px solid #ecdcc4;
+}
+.delivery-checkout-offer-prices > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  font-size: 11px;
+}
+.delivery-checkout-offer-prices span {
+  color: #846f5a;
+}
+.delivery-checkout-offer-prices strong {
+  white-space: nowrap;
+  font-size: 13px;
+}
+.delivery-checkout-offer .delivery-primary,
+.delivery-offer-decline {
+  width: 100%;
+  min-height: 48px;
+}
+.delivery-offer-decline {
+  border: 1px solid #d5b992;
+  border-radius: 10px;
+  background: #fffefa;
+  color: #674b31;
+  font-size: 12px;
+  font-weight: 800;
+}
+.delivery-checkout-offer > p {
+  margin: 0;
+  color: #917f6c;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.delivery-checkout-offer .delivery-link-button {
+  justify-self: center;
+  min-height: 44px;
+  font-size: 11px;
+}
+.delivery-offer-manager,
+.delivery-offer-analytics {
+  margin-top: 13px;
+}
+.delivery-offer-manager > .delivery-muted {
+  max-width: 680px;
+  margin-bottom: 18px;
+}
+.delivery-offer-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+.delivery-offer-editor label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #667864;
+  font-size: 11px;
+  font-weight: 800;
+}
+.delivery-offer-editor select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 10px;
+  border: 1px solid #dce3d7;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--delivery-ink);
+  font-size: 12px;
+}
+.delivery-offer-editor .delivery-primary {
+  min-height: 46px;
+}
+.delivery-offer-rules {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+.delivery-offer-rule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e4eadf;
+  border-radius: 11px;
+  background: #fffefa;
+}
+.delivery-offer-rule > div:first-child {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.delivery-offer-rule strong {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.delivery-offer-rule small {
+  color: var(--delivery-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.delivery-offer-rule-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.delivery-offer-rule-actions button {
+  min-height: 44px;
+}
+.delivery-offer-rule-actions .delivery-availability {
+  padding: 8px 11px;
+  font-size: 11px;
+}
+.delivery-offer-remove {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  border-radius: 9px;
+  background: #f4e8e2;
+  color: #965a43;
+}
+.delivery-offer-analytics h3 {
+  margin: 7px 0 15px;
+  font-size: 17px;
+}
+.delivery-offer-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.delivery-offer-stats > div {
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  min-height: 88px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #eff2e9;
+}
+.delivery-offer-stats span {
+  color: #667864;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.delivery-offer-stats strong {
+  font-size: 23px;
+  line-height: 1;
+}
+.delivery-offer-analytics .delivery-demo-hint {
+  margin-top: 12px;
+}
+.delivery-checkout-offer button:focus-visible,
+.delivery-offer-editor select:focus-visible,
+.delivery-offer-manager button:focus-visible {
+  outline: 2px solid #4f7358;
+  outline-offset: 2px;
+}
+@media (max-width: 950px) {
+  .delivery-offer-editor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .delivery-offer-editor .delivery-primary {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+@media (max-width: 650px) {
+  .delivery-offer-editor,
+  .delivery-offer-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .delivery-offer-editor label,
+  .delivery-offer-editor .delivery-primary {
+    grid-column: 1 / -1;
+  }
+  .delivery-offer-editor .delivery-primary {
+    width: 100%;
+  }
+  .delivery-offer-rule {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
