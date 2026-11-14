@@ -21,6 +21,7 @@ type financeProduct struct {
 	GrossProfit int64 `json:"grossProfit"`
 	AvailableStock int `json:"availableStock"`
 	AvailableValue int64 `json:"availableValue"`
+	MaxAvailableUnitCost int64 `json:"maxAvailableUnitCost"`
 	ReservedValue int64 `json:"reservedValue"`
 }
 type financeReport struct {
@@ -120,7 +121,7 @@ func(e *retailEngine) financeProjection()(financeReport,error){
 	}
 	for _,p:=range e.products{
 		row:=rows[p.ID]
-		for _,lot:=range lots[p.ID]{row.AvailableStock+=lot.qty;row.AvailableValue+=int64(lot.qty)*lot.cost}
+		for _,lot:=range lots[p.ID]{row.AvailableStock+=lot.qty;row.AvailableValue+=int64(lot.qty)*lot.cost;if lot.qty>0&&lot.cost>row.MaxAvailableUnitCost{row.MaxAvailableUnitCost=lot.cost}}
 		if row.AvailableStock!=p.Stock{return r,errors.New("finance stock mismatch")}
 		row.GrossProfit=row.Revenue-row.COGS
 		r.Revenue+=row.Revenue;r.COGS+=row.COGS;r.AvailableValue+=row.AvailableValue;r.ReservedValue+=row.ReservedValue
