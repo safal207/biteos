@@ -75,6 +75,8 @@ type retailEngine struct {
 	reviews map[string]reviewRecord
 	tenantID string
 	recipeReviews map[string]recipeReviewRecord
+	observationPlans map[string]observationPlan
+	observationResults map[string]observationResult
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
