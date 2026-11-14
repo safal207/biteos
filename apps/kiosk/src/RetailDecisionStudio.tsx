@@ -1,4 +1,6 @@
 import {useState} from "react";
+import {IS_DEMO} from "./types";
+import {LocalDecisionStudio} from "./LocalDecisionStudio";
 import "./retail.css";
 import "./retail-finance.css";
 import "./retail-decision-studio.css";
@@ -11,6 +13,9 @@ const copy={
 };
 const sample=[{id:"pilot-next",start:"2026-11-24",end:"2026-11-26",forecast:60,actual:null,contribution:240000,result:null},{id:"pilot-c",start:"2026-11-21",end:"2026-11-23",forecast:60,actual:55,contribution:240000,result:219400},{id:"pilot-b",start:"2026-11-18",end:"2026-11-20",forecast:60,actual:55,contribution:240000,result:219400},{id:"pilot-a",start:"2026-11-15",end:"2026-11-17",forecast:60,actual:55,contribution:240000,result:219400}];
 export function RetailDecisionStudio(){
+ return IS_DEMO?<DemoDecisionStudio/>:<LocalDecisionStudio/>;
+}
+function DemoDecisionStudio(){
  const [lang,setLang]=useState<Lang>("tr"),[filter,setFilter]=useState<Filter>("all");
  const t=copy[lang], money=(n:number)=>new Intl.NumberFormat(lang,{style:"currency",currency:"TRY"}).format(n/100);
  const reported=sample.filter(r=>r.actual!==null);

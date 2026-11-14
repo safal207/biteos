@@ -30,3 +30,49 @@ jobs:
         env:
           BITEOS_BROWSER: ${{ matrix.browser }}
         run: BITEOS_BROWSER_TOOLS="$RUNNER_TEMP/biteos-browser" node scripts/browser-smoke.mjs
+
+  local-pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: false
+      - run: pnpm --dir apps/kiosk install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev pkg-config
+      - name: Install Chromium test tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/biteos-browser" --no-save --ignore-scripts playwright@1.56.1
+          node "$RUNNER_TEMP/biteos-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Exercise local browser against SQLite tenant gateway
+        run: |
+          set -euo pipefail
+          export BITEOS_TENANTS=robys,rozal
+          export BITEOS_TENANT_ROOT="$RUNNER_TEMP/pilot-databases"
+          export BITEOS_TENANT_TOKEN_ROBYS="$(openssl rand -hex 32)"
+          export BITEOS_TENANT_TOKEN_ROZAL="$(openssl rand -hex 32)"
+          export BITEOS_TENANT_TOKEN_ROBYS_CASHIER="$(openssl rand -hex 32)"
+          export BITEOS_BROWSER_TOOLS="$RUNNER_TEMP/biteos-browser"
+          (cd services/api && CGO_ENABLED=1 go build -tags sqlite -o "$RUNNER_TEMP/biteos-api" .)
+          "$RUNNER_TEMP/biteos-api" tenant-serve > "$RUNNER_TEMP/biteos-pilot.log" 2>&1 &
+          api_pid=$!
+          pnpm --dir apps/kiosk dev > "$RUNNER_TEMP/biteos-vite.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$api_pid" "$web_pid" 2>/dev/null || true' EXIT
+          for url in http://127.0.0.1:8092/api/tenants/robys/retail/decision-studio http://127.0.0.1:5173/; do
+            ready=0
+            for i in $(seq 1 60); do
+              if curl -s --max-time 2 -o /dev/null "$url"; then ready=1; break; fi
+              sleep 1
+            done
+            test "$ready" = 1
+          done
+          node scripts/pilot-browser-smoke.mjs
