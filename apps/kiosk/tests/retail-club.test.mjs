@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import {validDay,addCalendarDays,createRhythm,rhythmStatus,advanceRhythm,parsePreferences,localDay} from "../src/retailRhythm.ts";
 import {parseClubList,snapshotCart,goalList,reviewList,reviewedCart,rankJourney,journeyHint} from "../src/retailClub.ts";
 const products=[
  {id:"eggs",name:{tr:"Yumurta",ru:"Яйца",en:"Eggs"},price:7200,stock:4},
@@ -54,4 +55,29 @@ test("neutral context and manual location hints are deterministic",()=>{
  assert.equal(journeyHint("home"),"compare");
  assert.equal(journeyHint("onway"),"pickup");
  assert.equal(journeyHint("store"),"in_store");
+});
+
+test("rhythm uses explicit calendar dates, leap days and no timezone-duration drift",()=>{
+ assert.equal(validDay("2026-02-29"),false);
+ assert.equal(addCalendarDays("2028-02-28",1),"2028-02-29");
+ assert.equal(addCalendarDays("2026-03-28",2),"2026-03-30");
+ assert.equal(addCalendarDays("2099-12-31",1),null);
+ assert.equal(localDay(new Date(2026,10,14,23,59)),"2026-11-14");
+ const plan=createRhythm([{id:"milk",quantity:2,previousPrice:4900}],7,"2026-11-14");
+ assert.equal(rhythmStatus(plan,"2026-11-13"),"upcoming");
+ assert.equal(advanceRhythm(plan,"2026-11-13"),null);
+ assert.equal(rhythmStatus(plan,"2026-11-14"),"due");
+ assert.equal(advanceRhythm(plan,"2026-11-30").nextDate,"2026-12-07");
+ assert.equal(plan.nextDate,"2026-11-14");
+});
+test("preferences reject malformed data and preserve an explicit list snapshot",()=>{
+ const items=[{id:"milk",quantity:2,previousPrice:4900}];
+ const plan=createRhythm(items,7,"2026-11-14");
+ items[0].quantity=3;
+ assert.equal(plan.list[0].quantity,2);
+ assert.deepEqual(parsePreferences(JSON.stringify({version:1,favorite:"milk",rhythm:plan})),{favorite:"milk",rhythm:plan});
+ assert.deepEqual(parsePreferences(JSON.stringify({version:1,favorite:"bad sku",rhythm:{...plan,intervalDays:0}})),{favorite:null,rhythm:null});
+ assert.deepEqual(parsePreferences("{"),{favorite:null,rhythm:null});
+ assert.equal(createRhythm([],7,"2026-11-14"),null);
+ assert.equal(createRhythm(plan.list,91,"2026-11-14"),null);
 });
