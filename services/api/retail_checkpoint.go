@@ -22,6 +22,7 @@ type retailState struct {
 	Evidence []retailEvidence `json:"evidence"`
 	DemandSignals map[string]demandSignal `json:"demandSignals,omitempty"`
 	Reviews map[string]reviewRecord `json:"reviews,omitempty"`
+	TenantID string `json:"tenantId,omitempty"`
 }
 type retailCheckpoint struct {
 	Version int `json:"version"`
@@ -29,7 +30,7 @@ type retailCheckpoint struct {
 	Digest string `json:"digest"`
 }
 func (e *retailEngine) state() retailState {
-	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals,e.reviews}
+	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals,e.reviews,e.tenantID}
 }
 func (e *retailEngine) restore(s retailState) {
 	e.products=s.Products
@@ -41,12 +42,14 @@ func (e *retailEngine) restore(s retailState) {
 	e.evidence=s.Evidence
 	e.demandSignals=s.DemandSignals
 	e.reviews=s.Reviews
+	e.tenantID=s.TenantID
 }
 func checkpointDigest(b []byte) string {
 	h:=sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }
 func validateRetailState(s retailState) error {
+	if s.TenantID!=""&&!validTenantID(s.TenantID){return errors.New("invalid tenant binding")}
 	if err:=validateDemand(s.DemandSignals);err!=nil{return err}
 	if err:=validateReviews(s.Reviews);err!=nil{return err}
 	if len(s.Products)==0 || s.Orders==nil || s.Keys==nil || s.UsedSlots==nil || s.Receipts==nil {
@@ -123,6 +126,7 @@ func openRetailEngine(path string) (*retailEngine,error) {
 	var state retailState
 	if err=json.Unmarshal(cp.State,&state);err!=nil {return nil,err}
 	if err=validateRetailState(state);err!=nil{return nil,err}
+	if state.TenantID!=""{return nil,errors.New("tenant store cannot be opened in legacy mode")}
 	e.restore(state)
 	return e,nil
 }
