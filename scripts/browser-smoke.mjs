@@ -46,6 +46,8 @@ try{
    await page.goto(base+"#workspace");
    await page.locator("[data-workspace-route='"+route+"']").click();
    await page.waitForURL("**/"+route);
+   // The workspace is itself main.retail; wait for the React route commit first.
+   await page.locator(".biteos-workspace").waitFor({state:"detached"});
    if(route==="#kiosk")await page.locator(".kiosk-delivery-link").first().waitFor();
    else await page.locator("main.retail").first().waitFor();
    assert.equal(await page.locator(".biteos-workspace").count(),0);
