@@ -24,6 +24,8 @@ type retailState struct {
 	Reviews map[string]reviewRecord `json:"reviews,omitempty"`
 	TenantID string `json:"tenantId,omitempty"`
 	RecipeReviews map[string]recipeReviewRecord `json:"recipeReviews,omitempty"`
+	ObservationPlans map[string]observationPlan `json:"observationPlans,omitempty"`
+	ObservationResults map[string]observationResult `json:"observationResults,omitempty"`
 }
 type retailCheckpoint struct {
 	Version int `json:"version"`
@@ -31,7 +33,7 @@ type retailCheckpoint struct {
 	Digest string `json:"digest"`
 }
 func (e *retailEngine) state() retailState {
-	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals,e.reviews,e.tenantID,e.recipeReviews}
+	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals,e.reviews,e.tenantID,e.recipeReviews,e.observationPlans,e.observationResults}
 }
 func (e *retailEngine) restore(s retailState) {
 	e.products=s.Products
@@ -45,6 +47,8 @@ func (e *retailEngine) restore(s retailState) {
 	e.reviews=s.Reviews
 	e.tenantID=s.TenantID
 	e.recipeReviews=s.RecipeReviews
+	e.observationPlans=s.ObservationPlans
+	e.observationResults=s.ObservationResults
 }
 func checkpointDigest(b []byte) string {
 	h:=sha256.Sum256(b)
@@ -55,6 +59,7 @@ func validateRetailState(s retailState) error {
 	if err:=validateDemand(s.DemandSignals);err!=nil{return err}
 	if err:=validateReviews(s.Reviews);err!=nil{return err}
 	if err:=validateRecipeReviews(s.RecipeReviews,s.TenantID);err!=nil{return err}
+	if err:=validateObservatory(s.ObservationPlans,s.ObservationResults,s.TenantID);err!=nil{return err}
 	if len(s.Products)==0 || s.Orders==nil || s.Keys==nil || s.UsedSlots==nil || s.Receipts==nil {
 		return errors.New("missing state")
 	}
