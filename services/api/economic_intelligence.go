@@ -104,10 +104,13 @@ func simulateEconomics(i economicInput,r recipeCostReport,promo bool)economicSce
 }
 func economicDigest(r economicReport)string{r.Digest="";raw,_:=json.Marshal(r);return checkpointDigest(raw)}
 func calculateEconomic(c universalCatalog,b recipeBook,i economicInput)(economicReport,error){
- r:=economicReport{Version:1,Demo:true,TenantID:c.TenantID,Currency:c.Currency}
  s,err:=buildRecipeSnapshot(c,b,i.Selection)
- if err!=nil{return r,err}
- if !validRecipeSnapshot(s,c.TenantID)||!validEconomicInput(i,s.Report){return r,errors.New("invalid or unsupported economic scenario")}
+ if err!=nil{return economicReport{},err}
+ return economicFromSnapshot(s,i,c.TenantID)
+}
+func economicFromSnapshot(s recipeSnapshot,i economicInput,tenant string)(economicReport,error){
+ r:=economicReport{Version:1,Demo:true,TenantID:tenant,Currency:"TRY"}
+ if !validRecipeSnapshot(s,tenant)||!validEconomicInput(i,s.Report){return r,errors.New("invalid or unsupported economic scenario")}
  i.Selection=s.Selection
  r.Recipe=s;r.Assumptions=i
  r.Baseline=simulateEconomics(i,s.Report,false);r.Campaign=simulateEconomics(i,s.Report,true)
