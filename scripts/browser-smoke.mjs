@@ -79,6 +79,12 @@ try{
   assert.equal(await page.locator("input[type=file]").count(),0);
   await page.getByLabel("Rank products by").selectOption("cartAddSessions");
   assert.equal(await page.locator("[data-growth-product]").first().getAttribute("data-growth-product"),"desserts:san-sebastian-cheesecake");
+  assert.equal(await page.locator("[data-robys-catalog-id]").count(),63);
+  await page.getByLabel("Search products").fill("Caffè Latte");
+  assert.ok(await page.locator("[data-robys-catalog-id]").count()<63);
+  await page.getByLabel("Search products").fill("unmatched-zzz");
+  assert.equal(await page.locator("[data-robys-catalog-id]").count(),0);
+  await page.getByLabel("Search products").fill("");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"growth dashboard overflow");
   assert.deepEqual(failures,[]);
   console.log(engine+" "+viewport.width+"px: 17 routes, search, return navigation, observatory verified");
