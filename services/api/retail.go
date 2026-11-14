@@ -69,6 +69,8 @@ type retailEngine struct {
 	receipts map[string]retailReceipt
 	evidence []retailEvidence
 	checkpointPath string
+	sqliteSave func([]byte,retailState)error
+	storageFailed bool
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
@@ -109,6 +111,7 @@ func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	respond(w,200,map[string]any{"demo":true,"currency":"TRY","products":e.products})
 }
 func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +124,7 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	hash := sha256.Sum256(data)
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	if replay,ok := e.keys[key]; ok {
 		if replay.Hash != hash { fail(w,409,"idempotency key conflict"); return }
 		respond(w,200,e.orders[replay.ID]); return
@@ -175,6 +179,7 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	if r.Method=="POST" && !retailDecode(w,r,&action) { return }
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	o,ok:=e.orders[r.URL.Query().Get("id")]
 	if !ok { fail(w,404,"order not found"); return }
 	if r.Method=="GET" { respond(w,200,o); return }
