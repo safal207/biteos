@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 )
@@ -9,7 +10,7 @@ import (
 // Fixed, illustrative opening-stock unit costs in kuruş. Procurement uses the
 // recorded receipt cost. No real merchant accounting or payment is implied.
 var financeOpeningCost=map[string]int64{"avocado":2800,"banana":2500,"milk":3100,"eggs":4600,"bread":4000,"buckwheat":6500,"dumplings":11500}
-type financeLot struct {qty int; cost int64}
+type financeLot struct {qty int; cost int64; useBy string; id string}
 type financeAllocation struct {lot *financeLot; qty int}
 type financeProduct struct {
 	ID string `json:"id"`
@@ -40,6 +41,8 @@ type financeReport struct {
 	AvailableValue int64 `json:"availableValue"`
 	ReservedValue int64 `json:"reservedValue"`
 	Products []financeProduct `json:"products"`
+	availableLots map[string][]*financeLot
+	orderUseBy map[string]string
 }
 
 // Caller holds the engine lock. Rebuild costs from movement order, not current
@@ -48,6 +51,8 @@ func(e *retailEngine) financeProjection()(financeReport,error){
 	r:=financeReport{Demo:true,Currency:"TRY",Method:"demo-fifo-at-reservation-v1",Products:[]financeProduct{}}
 	if err:=validateRetailState(e.state());err!=nil{return r,err}
 	lots:=map[string][]*financeLot{}
+	r.availableLots=lots
+	r.orderUseBy=map[string]string{}
 	alloc:=map[string]map[string][]financeAllocation{}
 	released:=map[string]map[string]bool{}
 	rows:=map[string]*financeProduct{}
@@ -68,15 +73,15 @@ func(e *retailEngine) financeProjection()(financeReport,error){
 	}
 	for _,p:=range newRetailEngine().products{
 		cost,ok:=financeOpeningCost[p.ID];if !ok{return r,errors.New("missing opening cost")}
-		lots[p.ID]=[]*financeLot{{qty:p.Stock,cost:cost}}
+		lots[p.ID]=[]*financeLot{{qty:p.Stock,cost:cost,id:"opening-"+p.ID}}
 		rows[p.ID]=&financeProduct{ID:p.ID,Name:p.Name,Category:p.Category}
 	}
-	for _,m:=range e.movements{
+	for idx,m:=range e.movements{
 		if rows[m.ProductID]==nil{return r,errors.New("unknown product")}
 		switch m.Kind{
 		case "receive":
 			if m.Delta<1||m.Delta>1000||m.UnitCost<1||m.UnitCost>100000000{return r,errors.New("invalid receiving cost")}
-			lots[m.ProductID]=append(lots[m.ProductID],&financeLot{qty:m.Delta,cost:m.UnitCost})
+			lots[m.ProductID]=append(lots[m.ProductID],&financeLot{qty:m.Delta,cost:m.UnitCost,useBy:m.UseBy,id:fmt.Sprintf("receipt-%d",idx+1)})
 		case "reserve":
 			n:=-m.Delta
 			if n<1||lineQty[m.Reference][m.ProductID]!=n||len(alloc[m.Reference][m.ProductID])!=0{return r,errors.New("invalid reserve allocation")}
@@ -108,7 +113,10 @@ func(e *retailEngine) financeProjection()(financeReport,error){
 			row:=rows[line.ID];parts:=alloc[id][line.ID]
 			if row==nil||len(parts)==0||released[id][line.ID]!=cancelled{return r,errors.New("allocation mismatch")}
 			var cost int64
-			for _,a:=range parts{cost+=int64(a.qty)*a.lot.cost}
+			for _,a:=range parts{
+				cost+=int64(a.qty)*a.lot.cost
+				if a.lot.useBy!=""&&(r.orderUseBy[id]==""||a.lot.useBy<r.orderUseBy[id]){r.orderUseBy[id]=a.lot.useBy}
+			}
 			if fulfilled{
 				row.UnitsSold+=line.Quantity;row.Revenue+=line.UnitPrice*int64(line.Quantity);row.COGS+=cost
 			}else if !cancelled{row.ReservedValue+=cost}
