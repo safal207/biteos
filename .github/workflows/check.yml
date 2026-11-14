@@ -25,7 +25,7 @@ jobs:
       - run: pnpm --dir apps/kiosk install --frozen-lockfile
       - run: node scripts/dependency-review.mjs
       - run: node scripts/test.mjs
-      - run: node --test scripts/robys-counter-report.test.mjs
+      - run: node --test scripts/robys-counter-report.test.mjs scripts/robys-engagement.test.mjs
       - run: cargo fmt --manifest-path services/recommender/Cargo.toml -- --check
       - run: go test -race ./...
         working-directory: services/api
