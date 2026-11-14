@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),21);
+  assert.equal(await links.count(),22);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),21);
+  assert.equal(await links.count(),22);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -120,8 +120,21 @@ try{
   assert.ok(await page.locator("[data-context-product]").count()>0);
   assert.ok(await page.getByText("Simulation only — no live weather or messages.",{exact:true}).isVisible());
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"context studio overflow");
+  await page.goto(base+"?robysMood=study#retail-robys-experience");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"My Roby’s"}).waitFor();
+  assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"study");
+  await page.getByRole("button",{name:"Friends",exact:true}).click();
+  assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"friends");
+  await page.getByRole("button",{name:"Preview discovery",exact:true}).click();
+  assert.ok(await page.getByText("1 / 3",{exact:true}).isVisible());
+  const shared=await page.getByLabel("Share this look").inputValue();
+  assert.ok(shared.includes("robysMood=friends")&&!shared.includes("progress"));
+  await page.getByRole("button",{name:"Standard menu",exact:true}).click();
+  assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"standard");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"adaptive experience overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 21 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 22 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}
