@@ -385,6 +385,7 @@ func env(key, fallback string) string {
 }
 func main() {
 	if len(os.Args)>1 {
+		if len(os.Args)==2&&os.Args[1]=="tenant-serve"{if err:=runTenantServer();err!=nil{log.Fatal(err)};return}
 		if len(os.Args)==2 && os.Args[1]=="evidence-sync" {if err:=runRetailEvidenceCommand();err!=nil{log.Fatal(err)};return}
 		log.Fatal("unknown command")
 	}
