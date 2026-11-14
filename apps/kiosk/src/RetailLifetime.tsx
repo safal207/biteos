@@ -23,7 +23,7 @@ export function RetailLifetime(){
  const t=copy[lang];
  useEffect(()=>{if(IS_DEMO)return;const c=new AbortController();setError(false);setReport(null);fetch("/api/retail/lifetime",{signal:c.signal,cache:"no-store"}).then(r=>{if(!r.ok)throw Error();return r.json() as Promise<Report>}).then(r=>{if(!c.signal.aborted)setReport(r)}).catch(()=>{if(!c.signal.aborted)setError(true)});return()=>c.abort()},[reload]);
  const money=(n:number)=>new Intl.NumberFormat(lang,{style:"currency",currency:"TRY"}).format(n/100);
- const status=(s:string)=>({HOLD:t.hold,UNKNOWN:t.unknown,REVIEW_SOON:t.review,DATED:t.dated}[s]??s);
+ const status=(s:string)=>(({HOLD:t.hold,UNKNOWN:t.unknown,REVIEW_SOON:t.review,DATED:t.dated} as Record<string,string>)[s]??s);
  return <main className="retail finance"><header><a href="#retail-finance">← Finance</a><strong>BiteOS <small>LIFETIME</small></strong><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="tr">TR</option><option value="ru">RU</option><option value="en">EN</option></select></header><section className="retail-hero"><p>ROZAL · SAVE / STOCK</p><h1>{t.title}</h1><p>{IS_DEMO?t.sample:t.local}</p></section>
  <p className="finance-note">{t.note}</p>{!IS_DEMO&&<button onClick={()=>setReload(x=>x+1)}>{t.refresh}</button>}
  {error&&<p role="alert">{t.error}</p>}
