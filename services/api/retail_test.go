@@ -37,9 +37,10 @@ func TestRetailReserveReplayCancel(t *testing.T) {
 }
 func TestRetailConcurrentLastStock(t *testing.T) {
 	e:=newRetailEngine()
-	e.products[0].Stock=1
 	mux:=http.NewServeMux()
 	e.register(mux)
+	// Establish the one-unit remainder through the real ledger, not direct stock mutation.
+	financeOrder(t,mux,"last-stock-setup",`{"items":[{"id":"avocado","quantity":17}],"mode":"pickup","replacement":"skip"}`)
 	body:=`{"items":[{"id":"avocado","quantity":1}],"mode":"pickup","replacement":"skip"}`
 	var wg sync.WaitGroup
 	results:=make(chan int,2)
