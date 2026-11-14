@@ -28,6 +28,8 @@ type retailRequest struct {
 	Items []retailItem `json:"items"`
 	Mode string `json:"mode"`
 	Replacement string `json:"replacement"`
+	ZoneID string `json:"zoneId"`
+	SlotID string `json:"slotId"`
 }
 type retailLine struct {
 	ID string `json:"id"`
@@ -44,6 +46,8 @@ type retailOrder struct {
 	Lines []retailLine `json:"lines"`
 	Mode string `json:"mode"`
 	Replacement string `json:"replacement"`
+	ZoneID string `json:"zoneId,omitempty"`
+	SlotID string `json:"slotId,omitempty"`
 	Currency string `json:"currency"`
 	Subtotal int64 `json:"subtotal"`
 	Fee int64 `json:"fee"`
@@ -60,6 +64,9 @@ type retailEngine struct {
 	products []retailProduct
 	orders map[string]retailOrder
 	keys map[string]retailReplay
+	usedSlots map[string]int
+	movements []retailMovement
+	receipts map[string]retailReceipt
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
@@ -73,6 +80,7 @@ func newRetailEngine() *retailEngine {
 			{"dumplings", map[string]string{"tr":"Pelmeni","ru":"Пельмени","en":"Pelmeni"}, "international", "400 g", 16500, 8},
 		},
 		orders: make(map[string]retailOrder), keys: make(map[string]retailReplay),
+		usedSlots: make(map[string]int), receipts: make(map[string]retailReceipt),
 	}
 }
 
@@ -91,6 +99,8 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/catalog", e.catalog)
 	mux.HandleFunc("/api/retail/orders", e.create)
 	mux.HandleFunc("/api/retail/order", e.order)
+	mux.HandleFunc("/api/retail/delivery", e.delivery)
+	mux.HandleFunc("/api/retail/inventory", e.inventory)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
@@ -131,13 +141,23 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 		o.Lines=append(o.Lines,retailLine{p.ID,p.Name,item.Quantity,p.Price})
 		o.Subtotal+=p.Price*int64(item.Quantity)
 	}
-	if req.Mode=="delivery" { o.Fee=3500 }
+	if req.Mode=="delivery" {
+		zone,slot,ok:=findRetailSlot(req.ZoneID,req.SlotID)
+		if !ok { fail(w,422,"invalid delivery zone or slot"); return }
+		if e.usedSlots[slot.ID]>=slot.Capacity { fail(w,409,"delivery slot full"); return }
+		if o.Subtotal<zone.Minimum { fail(w,422,"delivery minimum not met"); return }
+		o.ZoneID=zone.ID; o.SlotID=slot.ID; o.Fee=zone.Fee
+	} else if req.ZoneID!="" || req.SlotID!="" { fail(w,422,"pickup has no delivery slot"); return }
 	o.Total=o.Subtotal+o.Fee
 	var id [16]byte
 	if _,err:=rand.Read(id[:]);err!=nil { fail(w,503,"order identifier unavailable"); return }
 	o.ID="retail-"+hex.EncodeToString(id[:])
 	o.Events=[]retailEvent{{o.Status,time.Now().UTC()}}
-	for i,line:=range o.Lines { e.products[indexes[i]].Stock-=line.Quantity }
+	for i,line:=range o.Lines {
+		e.products[indexes[i]].Stock-=line.Quantity
+		e.recordMovement(line.ID,"reserve",-line.Quantity,o.ID,0)
+	}
+	if o.SlotID!="" { e.usedSlots[o.SlotID]++ }
 	e.orders[o.ID]=o
 	e.keys[key]=retailReplay{hash,o.ID}
 	respond(w,201,o)
@@ -157,7 +177,8 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	cancel:=action.Status=="cancelled" && (o.Status=="reserved" || o.Status=="picking" || o.Status=="packed")
 	if !cancel && (next[o.Status]=="" || next[o.Status]!=action.Status) { fail(w,409,"invalid transition"); return }
 	if cancel {
-		for _,line:=range o.Lines { for i,p:=range e.products { if p.ID==line.ID { e.products[i].Stock+=line.Quantity; break } } }
+		for _,line:=range o.Lines { for i,p:=range e.products { if p.ID==line.ID { e.products[i].Stock+=line.Quantity; e.recordMovement(line.ID,"release",line.Quantity,o.ID,0); break } } }
+		if o.SlotID!="" { e.usedSlots[o.SlotID]-- }
 	}
 	o.Status=action.Status
 	o.Events=append(o.Events,retailEvent{o.Status,time.Now().UTC()})
