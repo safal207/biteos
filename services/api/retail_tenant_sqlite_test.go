@@ -149,3 +149,15 @@ func TestTenantRecipeReviewPersistence(t *testing.T){
  w=tenantCall(g,"GET","/api/tenants/rozal/retail/recipe-cost/review",config[0].Token,"","")
  if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&history)!=nil||len(history.Records)!=0{t.Fatal("foreign history",w.Code,w.Body.String())}
 }
+
+func TestTenantEconomicBoundary(t *testing.T){
+ config:=tenantFixture();g,err:=openTenantGateway(t.TempDir(),config);if err!=nil{t.Fatal(err)}
+ a,b:="/api/tenants/rozal/retail/economic-intelligence","/api/tenants/robys/retail/economic-intelligence"
+ before,_:=json.Marshal(g.entries["robys"].engine.state());body,_:=json.Marshal(economicFixture())
+ w:=tenantCall(g,"POST",b,config[1].Token,"",string(body))
+ var r economicReport
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&r)!=nil||r.TenantID!="robys"||r.IncrementalContribution!=35000||r.ExternalEffectsAuthorized{t.Fatal(w.Code,w.Body.String())}
+ if w=tenantCall(g,"POST",b,config[0].Token,"",string(body));w.Code!=401{t.Fatal("foreign credential",w.Code)}
+ if w=tenantCall(g,"POST",a,config[0].Token,"",string(body));w.Code!=422{t.Fatal("foreign item",w.Code)}
+ after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("scenario mutated state")}
+}
