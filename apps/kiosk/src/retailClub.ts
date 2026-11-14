@@ -43,3 +43,27 @@ export function reviewedCart(list:ClubList,products:ClubProduct[],budget:number|
  if(!reviewList(list,products,budget).canApply)return null;
  return Object.fromEntries(list.map(l=>[l.id,l.quantity]));
 }
+
+export type JourneyTime="any"|"morning"|"day"|"evening"|"week";
+export type JourneyPlace="any"|"home"|"onway"|"store";
+export type JourneyContext={time:JourneyTime;place:JourneyPlace;budget:number|null};
+const timeGoals:Record<JourneyTime,readonly string[]>={any:[],morning:["breakfast","school"],day:["school","week"],evening:["dinner","breakfast"],week:["week","breakfast"]};
+const placeGoals:Record<JourneyPlace,readonly string[]>={any:[],home:["week","dinner"],onway:["school","dinner"],store:["breakfast","week"]};
+// Transparent rules, not predictions. Feasible goals always precede blocked
+// goals; then explicit intent governs the order. Never silently omit a SKU.
+export function rankJourney(context:JourneyContext,products:ClubProduct[]){
+ return goals.map((goal,index)=>{
+  const list=goalList(goal.id,products);
+  const view=reviewList(list,products,context.budget);
+  const timeIndex=timeGoals[context.time].indexOf(goal.id);
+  const placeIndex=placeGoals[context.place].indexOf(goal.id);
+  const timeMatch=timeIndex>=0;
+  const placeMatch=placeIndex>=0;
+  const score=(timeMatch?4-timeIndex:0)+(placeMatch?2-placeIndex:0);
+  return {goal,list,view,timeMatch,placeMatch,score,index};
+ }).sort((a,b)=>Number(b.view.canApply)-Number(a.view.canApply)||b.score-a.score||a.index-b.index);
+}
+// Explicit context alone suggests a method for consideration, never sets it.
+export function journeyHint(place:JourneyPlace):"compare"|"pickup"|"in_store"{
+ return place==="onway"?"pickup":place==="store"?"in_store":"compare";
+}
