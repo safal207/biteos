@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { IS_DEMO } from "./types";
 import "./retail.css";
+import { RetailClubPanel } from "./RetailClubPanel";
+import { parseClubList, snapshotCart } from "./retailClub";
+import type { ClubList } from "./retailClub";
 
 type Lang = "tr" | "ru" | "en";
 type Product = {id:string;name:Record<Lang,string>;category:string;unit:string;price:number;stock:number};
@@ -8,7 +11,7 @@ type Slot = {id:string;label:string;capacity:number;remaining:number};
 type Zone = {id:string;name:string;fee:number;minimum:number;slots:Slot[]};
 const demoZones:Zone[]=[{id:"center",name:"Gazipaşa · merkez",fee:3500,minimum:5000,slots:[{id:"center-a",label:"10:00–12:00",capacity:3,remaining:3},{id:"center-b",label:"16:00–18:00",capacity:5,remaining:5}]},{id:"outer",name:"Gazipaşa · çevre",fee:6500,minimum:15000,slots:[{id:"outer-a",label:"12:00–14:00",capacity:2,remaining:2},{id:"outer-b",label:"18:00–20:00",capacity:3,remaining:3}]}];
 const deliveryCopy={tr:{zone:"Bölge",slot:"Örnek zaman aralığı",minimum:"Minimum sipariş",remaining:"Boş yer",unavailable:"Teslimat seçeneği yok"},ru:{zone:"Зона",slot:"Демонстрационный интервал",minimum:"Минимальный заказ",remaining:"Свободно",unavailable:"Нет доступной доставки"},en:{zone:"Zone",slot:"Sample time window",minimum:"Minimum order",remaining:"Available",unavailable:"Delivery unavailable"}};
-type RetailOrder = {id:string;status:string;total:number;mode:"pickup"|"delivery";zoneId?:string;slotId?:string;events:{status:string;at:string}[]};
+type RetailOrder = {id:string;status:string;total:number;mode:"pickup"|"delivery";zoneId?:string;slotId?:string;lines?:{id:string;quantity:number;unitPrice:number}[];events:{status:string;at:string}[]};
 const seed: Product[] = [
   {id:"avocado",name:{tr:"Avokado",ru:"Авокадо",en:"Avocado"},category:"fresh",unit:"1 pc",price:4500,stock:18},
   {id:"banana",name:{tr:"Muz",ru:"Бананы",en:"Bananas"},category:"fresh",unit:"500 g",price:3900,stock:30},
@@ -38,6 +41,10 @@ async function getJSON<T>(path:string,init?:RequestInit):Promise<T>{
   if(!response.ok)throw new Error(String(response.status));
   return await response.json() as T;
 }
+const clubKey=(kind:"saved"|"last")=>"biteos.rozal.club.v1."+(IS_DEMO?"sample":"local")+"."+kind;
+function readClub(kind:"saved"|"last"):ClubList{
+ try{return parseClubList(localStorage.getItem(clubKey(kind)))}catch{return []}
+}
 export function RetailApp(){
   const [lang,setLang]=useState<Lang>("tr");
   const t=copy[lang];
@@ -51,6 +58,18 @@ export function RetailApp(){
   const [query,setQuery]=useState("");
   const [category,setCategory]=useState("all");
   const [cart,setCart]=useState<Record<string,number>>({});
+  const [savedList,setSavedList]=useState<ClubList>(()=>readClub("saved"));
+  const [lastList,setLastList]=useState<ClubList>(()=>readClub("last"));
+  const [orderList,setOrderList]=useState<ClubList>([]);
+  const [storageError,setStorageError]=useState(false);
+  function saveClub(kind:"saved"|"last",list:ClubList){
+    if(kind==="saved")setSavedList(list);else setLastList(list);
+    try{localStorage.setItem(clubKey(kind),JSON.stringify(list));setStorageError(false)}catch{setStorageError(true)}
+  }
+  function clearClub(){
+    setSavedList([]);setLastList([]);
+    try{localStorage.removeItem(clubKey("saved"));localStorage.removeItem(clubKey("last"));setStorageError(false)}catch{setStorageError(true)}
+  }
   const [mode,setMode]=useState<"pickup"|"delivery">("pickup");
   const [replacement,setReplacement]=useState("skip");
   const [order,setOrder]=useState<RetailOrder|null>(null);
@@ -79,6 +98,7 @@ export function RetailApp(){
       if(items.some(i=>i.quantity>(products.find(p=>p.id===i.id)?.stock??0)))throw new Error("stock");
       if(IS_DEMO){
         setReserved(items);
+        setOrderList(snapshotCart(cart,products));
         setProducts(prev=>prev.map(p=>({...p,stock:p.stock-(cart[p.id]||0)})));
         if(mode==="delivery")changeSlotCapacity(slotID,-1);
         setOrder({id:"demo-"+crypto.randomUUID().slice(0,8),mode,zoneId:mode==="delivery"?zoneID:undefined,slotId:mode==="delivery"?slotID:undefined,status:"reserved",total:subtotal+fee,events:[{status:"reserved",at:new Date().toISOString()}]});
@@ -86,6 +106,7 @@ export function RetailApp(){
         if(!key.current)key.current=crypto.randomUUID();
         const o=await getJSON<RetailOrder>("/api/retail/orders",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":key.current},body:JSON.stringify({items,mode,replacement,zoneId:mode==="delivery"?zoneID:"",slotId:mode==="delivery"?slotID:""})});
         setOrder(o);
+        setOrderList(o.lines?.map(l=>({id:l.id,quantity:l.quantity,previousPrice:l.unitPrice}))??[]);
         void refresh().catch(()=>setError(true));
       }
       setCart({});key.current="";
@@ -100,8 +121,14 @@ export function RetailApp(){
       if(IS_DEMO){
         if(status==="cancelled"){setProducts(prev=>prev.map(p=>({...p,stock:p.stock+(reserved.find(i=>i.id===p.id)?.quantity||0)})));if(order.slotId)changeSlotCapacity(order.slotId,1);}
         setOrder({...order,status,events:[...order.events,{status,at:new Date().toISOString()}]});
+        if((status==="delivered"||status==="collected")&&orderList.length)saveClub("last",orderList);
       } else {
-        setOrder(await getJSON<RetailOrder>("/api/retail/order?id="+encodeURIComponent(order.id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})}));
+        const updated=await getJSON<RetailOrder>("/api/retail/order?id="+encodeURIComponent(order.id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});
+        setOrder(updated);
+        if(updated.status==="delivered"||updated.status==="collected"){
+          const list=updated.lines?.map(l=>({id:l.id,quantity:l.quantity,previousPrice:l.unitPrice}))??orderList;
+          if(list.length)saveClub("last",list);
+        }
         void refresh().catch(()=>setError(true));
       }
     }catch{setError(true);}finally{pending.current=false;setBusy(false);}
@@ -111,6 +138,7 @@ export function RetailApp(){
     <section className="retail-hero"><p>GAZİPAŞA · CONCEPT</p><h1>{t.title}</h1><p>{t.demo}</p></section>
     {error&&<p role="alert">{t.error}</p>}
     {order?<section className="retail-cart"><h2>{t.order} · {order.id.slice(-8)}</h2><h3>{money(order.total)}</h3><ol>{order.events.map((ev,i)=><li key={i}>{track[ev.status]?.[lang]||ev.status}</li>)}</ol>{next&&<button disabled={busy} onClick={()=>void advance(next)}>{t.next}</button>}{canCancel&&<button disabled={busy} onClick={()=>void advance("cancelled")}>{t.cancel}</button>}{!next&&!canCancel&&<button onClick={()=>{setOrder(null);setReserved([]);}}>{t.repeat}</button>}</section>:<>
+    <RetailClubPanel lang={lang} products={products} cart={cart} saved={savedList} last={lastList} busy={busy} storageError={storageError} onSave={list=>saveClub("saved",list)} onClear={clearClub} onApply={next=>{if(pending.current)return;key.current="";setCart(next)}}/>
     <input className="retail-search" aria-label={t.search} placeholder={t.search} value={query} onChange={e=>setQuery(e.target.value)}/>
     <nav aria-label="Categories">{(["all","fresh","dairy","pantry","international"] as const).map(c=><button key={c} aria-pressed={category===c} onClick={()=>setCategory(c)}>{t[c]}</button>)}</nav>
     <div className="retail-products">{products.filter(p=>(category==="all"||p.category===category)&&Object.values(p.name).some(n=>n.toLocaleLowerCase(lang).includes(query.toLocaleLowerCase(lang)))).map(p=><article key={p.id}><div className="retail-art" aria-hidden="true">{icons[p.id]}</div><h3>{p.name[lang]}</h3><p>{p.unit} · {t.available}: {p.stock}</p><b>{money(p.price)}</b><div className="retail-qty"><button disabled={busy||!(cart[p.id]>0)} onClick={()=>change(p,-1)} aria-label={"− "+p.name[lang]}>−</button><span>{cart[p.id]||0}</span><button disabled={busy||(cart[p.id]||0)>=Math.min(p.stock,20)} onClick={()=>change(p,1)} aria-label={"+ "+p.name[lang]}>+</button></div></article>)}</div>
