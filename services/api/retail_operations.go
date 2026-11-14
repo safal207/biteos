@@ -50,6 +50,7 @@ type retailMovement struct {
 	Reference string `json:"reference"`
 	UnitCost int64 `json:"unitCost,omitempty"`
 	At time.Time `json:"at"`
+	UseBy string `json:"useBy,omitempty"`
 }
 type retailReceipt struct{
 	Hash [32]byte
@@ -60,9 +61,10 @@ type retailReceiving struct {
 	Quantity int `json:"quantity"`
 	UnitCost int64 `json:"unitCost"`
 	Reference string `json:"reference"`
+	UseBy string `json:"useBy,omitempty"`
 }
 func(e *retailEngine) recordMovement(id,kind string,delta int,reference string,cost int64) retailMovement {
-	m:=retailMovement{id,kind,delta,reference,cost,time.Now().UTC()}
+	m:=retailMovement{ProductID:id,Kind:kind,Delta:delta,Reference:reference,UnitCost:cost,At:time.Now().UTC()}
 	e.movements=append(e.movements,m)
 	return m
 }
@@ -82,6 +84,7 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 	if !retailDecode(w,r,&req){return}
 	key:=r.Header.Get("Idempotency-Key")
 	if len(key)<8||len(key)>128||req.Quantity<1||req.Quantity>1000||req.UnitCost<1||req.UnitCost>100000000||strings.TrimSpace(req.Reference)==""||len(req.Reference)>128{fail(w,422,"invalid receipt");return}
+	if req.UseBy!="" && (!validLifetimeDay(req.UseBy)||req.UseBy<=lifetimeToday(time.Now())) {fail(w,422,"use-by date must be in the future");return}
 	data,_:=json.Marshal(req)
 	hash:=sha256.Sum256(data)
 	e.mu.Lock()
@@ -99,6 +102,8 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 			if err!=nil {fail(w,503,"checkpoint unavailable");return}
 			e.products[i].Stock+=req.Quantity
 			m:=e.recordMovement(p.ID,"receive",req.Quantity,req.Reference,req.UnitCost)
+			m.UseBy=req.UseBy
+			e.movements[len(e.movements)-1]=m
 			e.receipts[key]=retailReceipt{hash,m}
 			e.emitEvidence(fmt.Sprintf("receipt-%d",len(e.receipts)),"inventory","received",1)
 			if err=e.commitMutation(before);err!=nil {fail(w,503,"checkpoint unavailable");return}
