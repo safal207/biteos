@@ -32,6 +32,8 @@ type brainReport struct {
  Fulfilled int `json:"fulfilled"`
  Contribution int64 `json:"contribution"`
  Decisions []brainDecision `json:"decisions"`
+ Snapshot string `json:"snapshot,omitempty"`
+ ReviewEnabled bool `json:"reviewEnabled"`
 }
 func(e *retailEngine) brainProjection(f financeReport,today string) brainReport{
  r:=brainReport{Demo:true,Mode:"review-only",Currency:"TRY",AsOf:today,RuleVersion:"brain-v1",Fulfilled:f.Fulfilled,Contribution:f.Contribution,Decisions:[]brainDecision{}}
@@ -74,5 +76,8 @@ func(e *retailEngine) brain(w http.ResponseWriter,r *http.Request){
  e.mu.Lock();defer e.mu.Unlock()
  if e.storageFailed{fail(w,503,"storage recovery required");return}
  f,err:=e.financeProjection();if err!=nil{fail(w,503,"finance reconciliation unavailable");return}
- respond(w,200,e.brainProjection(f,lifetimeToday(time.Now())))
+ report:=e.brainProjection(f,lifetimeToday(time.Now()))
+ snapshot,err:=e.reviewSnapshot(report);if err!=nil{fail(w,503,"snapshot unavailable");return}
+ report.Snapshot=snapshot;report.ReviewEnabled=reviewEnabled()
+ respond(w,200,report)
 }
