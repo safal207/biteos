@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),20);
+  assert.equal(await links.count(),21);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),20);
+  assert.equal(await links.count(),21);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -111,8 +111,17 @@ try{
   await page.getByLabel("Reward limit").fill("10");
   assert.equal(await page.locator("[data-community-stage]").count(),9);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"community studio overflow");
+  await page.goto(base+"#retail-robys-context");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Roby’s context assistant"}).waitFor();
+  await page.getByLabel("Weather").selectOption("storm");
+  assert.equal(await page.locator("[data-context-product]").count(),0);
+  await page.getByLabel("Weather").selectOption("hot");
+  assert.ok(await page.locator("[data-context-product]").count()>0);
+  assert.ok(await page.getByText("Simulation only — no live weather or messages.",{exact:true}).isVisible());
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"context studio overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 20 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 21 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}
