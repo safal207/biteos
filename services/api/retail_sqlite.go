@@ -128,6 +128,7 @@ func openSQLiteRetailEngineForTenant(path,tenant string)(*retailEngine,error){
 		if next.TenantID!=tenant{return errors.New("tenant binding changed")}
 		var previous retailState
 		if err:=json.Unmarshal(before,&previous);err!=nil{return err}
+		for id,v:=range previous.RecipeReviews{if n,ok:=next.RecipeReviews[id];!ok||n.Digest!=v.Digest{return errors.New("recipe review history changed")}}
 		if len(next.Evidence)<len(previous.Evidence){return errors.New("outbox truncation")}
 		for i,v:=range previous.Evidence{if next.Evidence[i].Digest!=v.Digest{return errors.New("outbox history changed")}}
 		raw,err:=json.Marshal(next);if err!=nil{return err}
