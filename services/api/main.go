@@ -384,6 +384,10 @@ func env(key, fallback string) string {
 	return fallback
 }
 func main() {
+	if len(os.Args)>1 {
+		if len(os.Args)==2 && os.Args[1]=="evidence-sync" {if err:=runRetailEvidenceCommand();err!=nil{log.Fatal(err)};return}
+		log.Fatal("unknown command")
+	}
 	store, err := openStore(env("ORDER_STORE", "data/orders.json"))
 	if err != nil {
 		log.Fatal(err)
