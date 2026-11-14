@@ -67,6 +67,7 @@ type retailEngine struct {
 	usedSlots map[string]int
 	movements []retailMovement
 	receipts map[string]retailReceipt
+	evidence []retailEvidence
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
@@ -101,6 +102,7 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/order", e.order)
 	mux.HandleFunc("/api/retail/delivery", e.delivery)
 	mux.HandleFunc("/api/retail/inventory", e.inventory)
+	mux.HandleFunc("/api/retail/evidence", e.evidenceReport)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
@@ -160,6 +162,7 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	if o.SlotID!="" { e.usedSlots[o.SlotID]++ }
 	e.orders[o.ID]=o
 	e.keys[key]=retailReplay{hash,o.ID}
+	e.emitEvidence(o.ID,"order","reserved",1)
 	respond(w,201,o)
 }
 func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
@@ -183,5 +186,6 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	o.Status=action.Status
 	o.Events=append(o.Events,retailEvent{o.Status,time.Now().UTC()})
 	e.orders[o.ID]=o
+	e.emitEvidence(o.ID,"order",o.Status,len(o.Events))
 	respond(w,200,o)
 }
