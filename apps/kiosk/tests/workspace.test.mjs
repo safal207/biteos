@@ -8,7 +8,7 @@ test("workspace covers all registered retail and kiosk routes without duplicates
  const routes=[...main.matchAll(/route === "(#retail[^"]*|#kiosk)"/g)].map(m=>m[1]).sort();
  assert.deepEqual(workspaceEntries.map(e=>e.route).sort(),routes);
  assert.equal(new Set(routes).size,routes.length);
- assert.equal(workspaceEntries.length,23);
+ assert.equal(workspaceEntries.length,24);
  for(const group of workspaceGroups)assert.ok(workspaceEntries.some(e=>e.group===group));
 });
 test("search and translations are present, local comparisons do not mutate registry",()=>{
@@ -19,6 +19,6 @@ test("search and translations are present, local comparisons do not mutate regis
  }
  assert.equal(workspaceSearch("ru","  ОБСЕРВАТОРИЯ ")[0].route,"#retail-observatory");
  assert.equal(workspaceSearch("en","not-a-real-module").length,0);
- assert.equal(workspaceSearch("tr","").length,23);
+ assert.equal(workspaceSearch("tr","").length,24);
  assert.equal(JSON.stringify(workspaceEntries),before);
 });

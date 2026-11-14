@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),23);
+  assert.equal(await links.count(),24);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),23);
+  assert.equal(await links.count(),24);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -128,6 +128,17 @@ try{
   assert.equal(await page.locator("[data-pilot-period]").count(),2);
   assert.ok(await page.getByText("Illustrative data — not actual café results.",{exact:true}).isVisible());
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"pilot report overflow");
+  await page.goto(base+"#retail-robys-experiment");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Roby’s experiment studio",exact:true}).waitFor();
+  assert.equal(await page.locator("input[type=file]").count(),0);
+  assert.equal(await page.locator("[data-experiment-arm]").count(),2);
+  assert.equal(await page.locator("[data-experiment-status]").getAttribute("data-experiment-status"),"review-positive");
+  await page.getByLabel("Example scenario").selectOption("small");
+  assert.equal(await page.locator("[data-experiment-status]").getAttribute("data-experiment-status"),"insufficient");
+  await page.getByLabel("Example scenario").selectOption("harm");
+  assert.equal(await page.locator("[data-experiment-status]").getAttribute("data-experiment-status"),"guardrail");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"experiment studio overflow");
   await page.goto(base+"?robysMood=study#retail-robys-experience");
   await page.getByLabel("Language").selectOption("en");
   await page.getByRole("heading",{name:"My Roby’s",level:1,exact:true}).waitFor();
@@ -202,7 +213,7 @@ try{
   assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"standard");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"adaptive experience overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 23 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 24 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}
