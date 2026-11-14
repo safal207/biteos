@@ -67,3 +67,15 @@ func TestTenantGatewayDeniesFallback(t *testing.T){
  if err=os.Symlink(legacy,filepath.Join(root,"rozal.sqlite"));err!=nil{t.Fatal(err)}
  if _,err=openTenantGateway(root,config);err==nil{t.Fatal("symlink accepted")}
 }
+
+func TestTenantBrandEndpoint(t *testing.T){
+ config:=tenantFixture();g,err:=openTenantGateway(t.TempDir(),config);if err!=nil{t.Fatal(err)}
+ for _,c:=range config{
+  path:="/api/tenants/"+c.ID+"/retail/brand"
+  w:=tenantCall(g,"GET",path,c.Token,"","")
+  var p brandProfile
+  if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&p)!=nil||p.TenantID!=c.ID||validateBrand(p,c.ID)!=nil{t.Fatal(w.Code,w.Body.String())}
+  if w=tenantCall(g,"GET",path,"wrong","","");w.Code!=401{t.Fatal(w.Code)}
+  if w=tenantCall(g,"POST",path,c.Token,"","{}");w.Code!=404{t.Fatal(w.Code)}
+ }
+}
