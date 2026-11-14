@@ -34,6 +34,21 @@ This is a dependency-free prototype, not SQLite, WAL, a signed ledger or a subst
 
 Tests include reopen + idempotency, failed order/receipt/cancellation writes, corrupted and rehashed inconsistent stock, and a child process killed after acknowledgement followed by a new engine reading the checkpoint. Exact-head CI must pass before these tests are claimed as evidence.
 
+## Optional SQLite backend (WAL + evidence outbox)
+
+Linux prerequisites: Go, C compiler, pkg-config, libsqlite3-dev. SQLite is public-domain software; no paid service and no external Go module is required. Default builds and Docker remain JSON-checkpoint based. To use a NEW explicitly selected demo database:
+
+```sh
+cd services/api
+CGO_ENABLED=1 RETAIL_BACKEND=sqlite RETAIL_STORE=data/retail.db go run -tags sqlite .
+```
+
+Do not switch an existing store silently: there is no JSON migration yet. Use separate paths and backups. An existing empty, corrupt or inconsistent SQLite database fails startup. SQLite WAL mode and synchronous FULL are required/configured. SQLite stores the complete checksummed state as one blob; each newly accepted evidence event is inserted into a separate append-only-by-application outbox table in the same transaction. The update compares the previous digest to reject stale writers; a failed transaction rolls back and latches the engine unavailable until reopened. The operating model remains one process per store; stale readers in other processes are not prevented.
+
+The outbox currently retains all events as pending; there is no worker, delivery acknowledgement, external payment confirmation or runtime LiminalDB adapter. On reopen, order/inventory/slot constraints and the entire outbox are reconciled with the state. Read-only evidence endpoint reports storage=sqlite-wal but does not claim external durability. Tests exercise reopen, idempotency, an injected trigger that aborts an outbox insert, stale writer, missing evidence and process kill after acknowledgement. No new production or host-power-loss guarantees are established.
+
+Run `CGO_ENABLED=1 go test -race -tags sqlite ./...` locally or see Check BiteOS CI. The optional build uses the locally packaged SQLite library (see distribution security updates / license notice); Windows/other packaging and relational table normalization are future work. No user data or public deployment.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
