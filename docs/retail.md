@@ -8,7 +8,7 @@ Open the `#retail` route on the local BiteOS frontend. In GitHub Pages mode it i
 - Server-priced orders, stock reservation under a lock, idempotency key replay/conflict, cancellation restoring stock.
 - Pickup or delivery with a zone-dependent sample fee, minimum basket and capacity-controlled fictional time windows; explicit replacement preference (no actual substitutions).
 - Fulfillment events: reserved → picking → packed → collected, or in_transit → delivered; cancellation before dispatch.
-- Demo limit: 1000 orders per process. All retail state is in memory. Restart resets it. No real merchant, courier, payments, authentication, address or customer data. The status button simulates all roles. Do not expose the local API publicly.
+- Demo limit: 1000 orders per process. The browser demo and test engines remain in memory. The local Go server uses a checksummed JSON checkpoint by default (`RETAIL_STORE`, or `retail-state.json` beside `ORDER_STORE`). No real merchant, courier, payments, authentication, address or customer data. The status button simulates all roles. Do not expose the local API publicly.
 
 ## Delivery and inventory operations
 
@@ -21,10 +21,18 @@ Open the `#retail` route on the local BiteOS frontend. In GitHub Pages mode it i
 
 ## Trust Engine — first evidence boundary
 
-- GET /api/retail/evidence exports at most 100 recent in-memory events: accepted order creation, state transitions and receiving. Duplicate/rejected requests do not append events. Event digests link to the previous digest and include the local aggregate version.
-- The chain is a demo integrity check, not signed/authenticated evidence, not durable, and not a full transaction payload. Process restart resets the chain. Never infer payment, dispatch, external delivery or absence of an effect from a local reservation claim.
+- GET /api/retail/evidence exports at most 100 recent events: accepted order creation, state transitions and receiving. Duplicate/rejected requests do not append events. Event digests link to the previous digest and include the local aggregate version.
+- The chain is a demo integrity check, not signed/authenticated evidence, not a full transaction payload, and not a LiminalDB acknowledgement. The checkpoint stores the chain across ordinary restarts; memory-only mode resets it. Never infer payment, dispatch, external delivery or absence of an effect from a local reservation claim.
 - `BITEOS-LIMINALDB-001`: Go test generates a synthetic unavailable external readback scenario from an actual internal demo order event. A distinct CI job checks out LiminalDB at commit `61b02fc81e0cb5cf1f1ed4658ecff58f683cb728` and runs a native Rust ledger compatibility/reopen test. The fixture requires REVALIDATE and must not assert an external committed effect. This is a bounded test of mapping and replay, not runtime integration or a payment guarantee.
 - Next: SQLite transaction + durable outbox, stable persisted stream identity, independent readback authority, acknowledgement/retry protocol, authenticated runtime sidecar and crash injection. Do not add paid dependencies.
+
+## Local checkpoint — intermediate persistence
+
+A single process serializes all accepted retail state (stock, slots, orders, idempotency indexes, receipts, movements and evidence) under the engine lock. Before returning success it writes a temporary file, syncs and closes it, then renames it over the checkpoint. A failed pre-commit write restores the previous in-memory state and returns 503. Reopening validates the checksum, stock reconciliation, slot allocation and evidence relationships; an invalid file causes startup failure rather than reseeding stock silently.
+
+This is a dependency-free prototype, not SQLite, WAL, a signed ledger or a substitute for a transactional production database. The rename boundary assumes a local filesystem with atomic replacement (Linux CI); no multi-process writers, host-power-loss durability, directory fsync, hostile filesystem or anti-rollback guarantee. Back up the checkpoint; do not delete it to recover from an unexplained error. No real customer data or public deployment.
+
+Tests include reopen + idempotency, failed order/receipt/cancellation writes, corrupted and rehashed inconsistent stock, and a child process killed after acknowledgement followed by a new engine reading the checkpoint. Exact-head CI must pass before these tests are claimed as evidence.
 
 ## Verification
 
