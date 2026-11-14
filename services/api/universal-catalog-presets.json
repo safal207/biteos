@@ -1,0 +1,213 @@
+[
+  {
+    "version": 1,
+    "tenantId": "rozal",
+    "currency": "TRY",
+    "ingredients": [
+      {
+        "id": "milk",
+        "name": {
+          "tr": "Süt",
+          "ru": "Молоко",
+          "en": "Milk"
+        }
+      }
+    ],
+    "items": [
+      {
+        "id": "milk",
+        "kind": "product",
+        "name": {
+          "tr": "Süt",
+          "ru": "Молоко",
+          "en": "Milk"
+        },
+        "price": 4900,
+        "unit": "L",
+        "available": true,
+        "ingredients": [
+          "milk"
+        ],
+        "allergenStatus": "unknown",
+        "variants": [
+          {
+            "id": "small",
+            "name": {
+              "tr": "500 ml",
+              "ru": "500 мл",
+              "en": "500 ml"
+            },
+            "price": 2900
+          },
+          {
+            "id": "large",
+            "name": {
+              "tr": "1 L",
+              "ru": "1 л",
+              "en": "1 L"
+            },
+            "price": 4900
+          }
+        ],
+        "groups": []
+      },
+      {
+        "id": "bread",
+        "kind": "product",
+        "name": {
+          "tr": "Ekmek",
+          "ru": "Хлеб",
+          "en": "Bread"
+        },
+        "price": 6500,
+        "unit": "piece",
+        "available": true,
+        "ingredients": [],
+        "allergenStatus": "unknown",
+        "variants": [],
+        "groups": []
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "tenantId": "robys",
+    "currency": "TRY",
+    "ingredients": [
+      {
+        "id": "espresso",
+        "name": {
+          "tr": "Espresso",
+          "ru": "Эспрессо",
+          "en": "Espresso"
+        }
+      },
+      {
+        "id": "milk",
+        "name": {
+          "tr": "Süt",
+          "ru": "Молоко",
+          "en": "Milk"
+        }
+      },
+      {
+        "id": "oat-drink",
+        "name": {
+          "tr": "Yulaf içeceği",
+          "ru": "Овсяный напиток",
+          "en": "Oat drink"
+        }
+      }
+    ],
+    "items": [
+      {
+        "id": "latte",
+        "kind": "drink",
+        "name": {
+          "tr": "Latte",
+          "ru": "Латте",
+          "en": "Latte"
+        },
+        "price": 9000,
+        "unit": "cup",
+        "available": true,
+        "ingredients": [
+          "espresso",
+          "milk"
+        ],
+        "allergenStatus": "unknown",
+        "variants": [
+          {
+            "id": "regular",
+            "name": {
+              "tr": "Normal",
+              "ru": "Стандарт",
+              "en": "Regular"
+            },
+            "price": 9000
+          },
+          {
+            "id": "large",
+            "name": {
+              "tr": "Büyük",
+              "ru": "Большой",
+              "en": "Large"
+            },
+            "price": 11000
+          }
+        ],
+        "groups": [
+          {
+            "id": "extras",
+            "name": {
+              "tr": "Ekstra",
+              "ru": "Дополнения",
+              "en": "Extras"
+            },
+            "min": 0,
+            "max": 2,
+            "options": [
+              {
+                "id": "extra-shot",
+                "name": {
+                  "tr": "Ek espresso",
+                  "ru": "Доп. эспрессо",
+                  "en": "Extra shot"
+                },
+                "delta": 2000,
+                "ingredients": [
+                  "espresso"
+                ]
+              },
+              {
+                "id": "oat-drink",
+                "name": {
+                  "tr": "Yulaf içeceği ekle",
+                  "ru": "Добавить овсяный напиток",
+                  "en": "Add oat drink"
+                },
+                "delta": 1500,
+                "ingredients": [
+                  "oat-drink"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cake",
+        "kind": "dish",
+        "name": {
+          "tr": "Pasta",
+          "ru": "Торт",
+          "en": "Cake"
+        },
+        "price": 13000,
+        "unit": "portion",
+        "available": true,
+        "ingredients": [],
+        "allergenStatus": "unknown",
+        "variants": [],
+        "groups": []
+      },
+      {
+        "id": "tasting",
+        "kind": "service",
+        "name": {
+          "tr": "Kahve tadımı",
+          "ru": "Дегустация кофе",
+          "en": "Coffee tasting"
+        },
+        "price": 20000,
+        "unit": "session",
+        "available": true,
+        "ingredients": [],
+        "allergenStatus": "unknown",
+        "variants": [],
+        "groups": [],
+        "durationMinutes": 30
+      }
+    ]
+  }
+]
