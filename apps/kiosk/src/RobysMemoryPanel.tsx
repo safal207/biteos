@@ -12,9 +12,11 @@ const copy={
  en:{title:"My Roby’s memory",note:"Optional device memory. Explicit preferences and decisions only; 30 days, up to 32 records. No server transmission.",enable:"Enable local memory",erase:"Clear and disable memory",off:"Memory is off.",like:"Remember this layout",avoid:"Do not suggest this layout",product:"Product preference",favorite:"Remember product",not:"Do not suggest this product",suggest:"Memory suggestion",basis:"Latest explicit preference",apply:"Apply memory suggestion",dismiss:"Dismiss suggestion",history:"Decision history",none:"No suggestion yet.",failed:"Memory unavailable; change was not saved.",actions:["Preferred","Avoid","Applied","Dismissed"],saved:"Remembered product (not a sales offer)",clear:"Memory cleared."}
 };
 function read():Memory|null{try{return readMemory(localStorage.getItem(memoryKey),Date.now(),ids)}catch{return null}}
-export function RobysMemoryPanel({lang,layout,onLayout}:{lang:Lang;layout:Layout;onLayout:(l:Layout)=>void}){
+export function RobysMemoryPanel({lang,layout,onLayout,onMemory}:{lang:Lang;layout:Layout;onLayout:(l:Layout)=>void;onMemory:(m:Memory|null)=>void}){
  const [memory,setMemory]=useState<Memory|null>(read),[product,setProduct]=useState(ids[0]),[status,setStatus]=useState<"failed"|"clear"|null>(null);
  const t=copy[lang],i=["tr","ru","en"].indexOf(lang);
+ useEffect(()=>{onMemory(memory)},[memory,onMemory]);
+ useEffect(()=>{if(!memory)return;const timer=window.setTimeout(()=>setMemory(read()),Math.max(1,Math.min(2147483647,memory.expiresAt-Date.now()+1)));return()=>window.clearTimeout(timer)},[memory]);
  useEffect(()=>{function sync(e:StorageEvent){if(e.key===memoryKey||e.key===null)setMemory(read())}window.addEventListener("storage",sync);return()=>window.removeEventListener("storage",sync)},[]);
  function enable(){try{const current=read()??freshMemory(Date.now());localStorage.setItem(memoryKey,JSON.stringify(current));setMemory(current);setStatus(null)}catch{setStatus("failed")}}
  function erase(){try{localStorage.removeItem(memoryKey);setMemory(null);setStatus("clear")}catch{setStatus("failed")}}

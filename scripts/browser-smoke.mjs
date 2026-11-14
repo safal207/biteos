@@ -174,6 +174,16 @@ try{
   await page.getByLabel("Product preference").selectOption("hot-coffee:caffe-latte");
   await page.getByRole("button",{name:"Remember product",exact:true}).click();
   assert.equal(await page.locator("[data-memory-product]").getAttribute("data-memory-product"),"hot-coffee:caffe-latte");
+  await page.getByLabel("Scenario date").fill("2026-11-16");
+  await page.getByRole("button",{name:"Cozy",exact:true}).click();
+  await page.getByLabel("Weather scenario").selectOption("rain");
+  await page.getByLabel("Agent budget (TRY)").fill("180");
+  await page.locator("[data-agent-product=\"hot-coffee:caffe-latte\"]").waitFor();
+  assert.equal(await page.locator("[data-agent-basis]").getAttribute("data-agent-basis"),"3");
+  await page.getByLabel("Unavailable item scenario").selectOption("hot-coffee:caffe-latte");
+  assert.equal(await page.locator("[data-agent-product=\"hot-coffee:caffe-latte\"]").count(),0);
+  await page.getByLabel("Weather scenario").selectOption("storm");
+  assert.equal(await page.locator("[data-agent-action]").getAttribute("data-agent-action"),"abstain");
   await page.reload();await page.getByLabel("Language").selectOption("en");
   assert.equal(await page.locator("[data-memory-event]").count(),3);
   await page.getByRole("button",{name:"Dismiss suggestion",exact:true}).click();
