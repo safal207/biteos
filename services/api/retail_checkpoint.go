@@ -21,6 +21,7 @@ type retailState struct {
 	Receipts map[string]retailReceipt `json:"receipts"`
 	Evidence []retailEvidence `json:"evidence"`
 	DemandSignals map[string]demandSignal `json:"demandSignals,omitempty"`
+	Reviews map[string]reviewRecord `json:"reviews,omitempty"`
 }
 type retailCheckpoint struct {
 	Version int `json:"version"`
@@ -28,7 +29,7 @@ type retailCheckpoint struct {
 	Digest string `json:"digest"`
 }
 func (e *retailEngine) state() retailState {
-	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals}
+	return retailState{e.products,e.orders,e.keys,e.usedSlots,e.movements,e.receipts,e.evidence,e.demandSignals,e.reviews}
 }
 func (e *retailEngine) restore(s retailState) {
 	e.products=s.Products
@@ -39,6 +40,7 @@ func (e *retailEngine) restore(s retailState) {
 	e.receipts=s.Receipts
 	e.evidence=s.Evidence
 	e.demandSignals=s.DemandSignals
+	e.reviews=s.Reviews
 }
 func checkpointDigest(b []byte) string {
 	h:=sha256.Sum256(b)
@@ -46,6 +48,7 @@ func checkpointDigest(b []byte) string {
 }
 func validateRetailState(s retailState) error {
 	if err:=validateDemand(s.DemandSignals);err!=nil{return err}
+	if err:=validateReviews(s.Reviews);err!=nil{return err}
 	if len(s.Products)==0 || s.Orders==nil || s.Keys==nil || s.UsedSlots==nil || s.Receipts==nil {
 		return errors.New("missing state")
 	}
