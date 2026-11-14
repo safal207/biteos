@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),15);
+  assert.equal(await links.count(),16);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),15);
+  assert.equal(await links.count(),16);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -61,8 +61,19 @@ try{
   await page.getByLabel("Language").selectOption("en");
   await page.getByRole("heading",{name:"Forecast error"}).waitFor();
   assert.ok(await page.getByText("Causal effect not established.").isVisible());
+  await page.goto(base+"#retail-decision-studio");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Decision studio"}).waitFor();
+  assert.ok(await page.getByText("9.09%",{exact:true}).isVisible());
+  await page.getByRole("button",{name:"Awaiting observation"}).click();
+  await page.getByText("pilot-next",{exact:true}).waitFor();
+  assert.equal(await page.locator("[data-decision-row]").count(),1);
+  await page.getByRole("button",{name:"All decisions"}).click();
+  await page.locator("[data-decision-row]").last().waitFor();
+  assert.equal(await page.locator("[data-decision-row]").count(),4);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"decision studio horizontal overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 15 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 16 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}

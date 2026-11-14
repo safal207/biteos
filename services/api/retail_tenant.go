@@ -66,7 +66,7 @@ func openTenantGatewayWithRoles(root string,config []tenantConfig,roles []tenant
 // Legacy review/business and independent restaurant APIs are deliberately absent.
 func tenantAllowed(path,method string)bool{
  switch path{
- case "business-learning","business-memory","observatory","brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
+ case "decision-studio","business-learning","business-memory","observatory","brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
  case "recipe-cost/review","recipe-cost","universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
  case "observatory/plan","observatory/observation","economic-intelligence","recipe-cost/snapshot","orders","demand/plan":return method=="POST"
  }
@@ -92,6 +92,7 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  if parts[2]=="recipe-cost/snapshot"{serveRecipeSnapshot(w,r,entry);return}
  if parts[2]=="recipe-cost/review"{serveRecipeReview(w,r,entry);return}
  if parts[2]=="economic-intelligence"{serveEconomic(w,r,entry);return}
+ if parts[2]=="decision-studio"{serveDecisionStudio(w,entry,time.Now());return}
  if parts[2]=="business-learning"{serveBusinessLearning(w,entry,time.Now());return}
  if parts[2]=="business-memory"{serveBusinessMemory(w,entry,time.Now());return}
  if parts[2]=="observatory"{serveObservatory(w,r,entry,"list");return}

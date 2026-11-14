@@ -49,5 +49,8 @@ func TestOwnerJourneyThroughTenantGateway(t *testing.T){
  var learning businessLearningReport
  if err=json.Unmarshal(call("GET","business-learning",nil,200),&learning);err!=nil||learning.Completed!=0||learning.Pending!=1||len(learning.Cohorts)!=0||learning.ExternalEffectsAuthorized{t.Fatal(learning,err)}
  if w:=tenantCall(g,"GET",base+"business-learning",config[0].Token,"","");w.Code!=401{t.Fatal("foreign learning access",w.Code)}
+ var studio decisionStudioReport
+ if err=json.Unmarshal(call("GET","decision-studio",nil,200),&studio);err!=nil||studio.TenantID!="robys"||len(studio.Memory.Rows)!=1||studio.Learning.Pending!=1||studio.Learning.Completed!=0||studio.ExternalEffectsAuthorized{t.Fatal(studio,err)}
+ if w:=tenantCall(g,"GET",base+"decision-studio",config[0].Token,"","");w.Code!=401{t.Fatal("foreign studio access",w.Code)}
  if len(g.entries["robys"].engine.recipeReviews)!=1||len(g.entries["rozal"].engine.recipeReviews)!=0||len(g.entries["rozal"].engine.observationPlans)!=0{t.Fatal("review or tenant isolation")}
 }
