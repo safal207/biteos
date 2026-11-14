@@ -114,6 +114,7 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/lifetime", e.lifetime)
 	mux.HandleFunc("/api/retail/twin", e.twin)
 	mux.HandleFunc("/api/retail/spatial", e.spatial)
+	mux.HandleFunc("/api/retail/brain", e.brain)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
