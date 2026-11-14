@@ -33,7 +33,7 @@ export function RetailFinance(){
  const money=(n:number)=>new Intl.NumberFormat(lang==="tr"?"tr-TR":lang==="ru"?"ru-RU":"en-US",{style:"currency",currency:"TRY"}).format(n/100);
  const percent=(a:number,b:number)=>b?new Intl.NumberFormat(lang,{style:"percent",maximumFractionDigits:1}).format(a/b):"—";
  return <main className="retail finance">
- <header><a href="#retail">← ROZAL</a><strong>BiteOS <small>FINANCE</small></strong><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="tr">TR</option><option value="ru">RU</option><option value="en">EN</option></select></header>
+ <header><a href="#workspace">← BiteOS</a><strong>BiteOS <small>FINANCE</small></strong><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="tr">TR</option><option value="ru">RU</option><option value="en">EN</option></select></header>
  <section className="retail-hero"><p>ROZAL · BUSINESS DEMO</p><h1>{t.title}</h1><p>{IS_DEMO?t.sample:t.local}</p></section>
  <p><a href="#retail-growth">{lang==="tr"?"Kampanya planlayıcı":lang==="ru"?"Планировщик акций":"Promotion planner"}</a></p>
  <p><a href="#retail-demand-business">{lang==="tr"?"Talep ve satın alma":lang==="ru"?"Спрос и закупки":"Demand and procurement"}</a></p>
