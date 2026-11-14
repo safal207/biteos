@@ -2,6 +2,7 @@ import { useState } from "react";
 import { rankJourney,journeyHint,reviewList,reviewedCart,snapshotCart } from "./retailClub";
 import type { ClubLang,ClubProduct,ClubList,JourneyTime,JourneyPlace } from "./retailClub";
 import "./retail-club.css";
+import { RetailRhythmPanel } from "./RetailRhythmPanel";
 
 const copy={
  tr:{title:"ROZAL LIFE",intro:"Günlük alışverişinizi kolaylaştırın",save:"Sepeti liste olarak kaydet",saved:"Kayıtlı listem",last:"Son tamamlanan sipariş",clear:"Listeleri sil",review:"Listeyi kontrol et",budget:"Ürün bütçesi (₺, isteğe bağlı)",quantity:"Adet",available:"Stok",changed:"Fiyat değişti",missing:"Ürün mevcut değil",over:"Bütçe aşıldı",apply:"Sepeti bu listeyle değiştir",close:"Kapat",empty:"Henüz liste yok",local:"Listeler yalnızca bu tarayıcıda saklanır. Üyelik veya ödül yok.",subtotal:"Ürün toplamı · teslimat hariç",remove:"Çıkar",invalid:"Miktarı düzeltin veya ürünü çıkarın.",storage:"Tarayıcı kaydı kullanılamıyor.",current:"Güncel örnek fiyatlar; sipariş sırasında tekrar kontrol edilir."},
@@ -42,6 +43,7 @@ export function RetailClubPanel({lang,products,cart,saved,last,busy,storageError
  <button disabled={busy||(!saved.length&&!last.length)} onClick={()=>{onClear();setDraft(null)}}>{t.clear}</button>
  </div>
  <p className="club-note">{t.local}</p>{storageError&&<p role="alert">{t.storage}</p>}
+ <RetailRhythmPanel lang={lang} products={products} saved={saved} last={last} busy={busy} onReview={open}/>
  {draft&&view&&<section className="club-review" aria-label={t.review}>
  <h3>{t.review}</h3><p className="club-note">{t.current}</p>
  {view.lines.map(l=><div className="club-line" key={l.id}>
