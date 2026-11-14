@@ -107,6 +107,7 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/inventory", e.inventory)
 	mux.HandleFunc("/api/retail/evidence", e.evidenceReport)
 	mux.HandleFunc("/api/retail/finance", e.finance)
+	mux.HandleFunc("/api/retail/growth", e.growth)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
