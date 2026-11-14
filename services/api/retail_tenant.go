@@ -22,7 +22,7 @@ func validTenantID(id string)bool{
  return true
 }
 type tenantConfig struct{ID,Token string}
-type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux; brand brandProfile; catalog universalCatalog}
+type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux; brand brandProfile; catalog universalCatalog; recipes recipeBook}
 type tenantGateway struct{entries map[string]tenantEntry}
 func validateTenantConfigs(config []tenantConfig)error{
  if len(config)<1||len(config)>8{return errors.New("configure 1–8 tenants")}
@@ -46,6 +46,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
  for _,c:=range config{
   brand,err:=loadTenantBrand(absolute,c.ID);if err!=nil{return nil,fmt.Errorf("tenant %s brand: %w",c.ID,err)}
   catalog,err:=loadUniversal(absolute,c.ID);if err!=nil{return nil,fmt.Errorf("tenant %s catalog: %w",c.ID,err)}
+  recipes,err:=loadRecipeBook(absolute,catalog);if err!=nil{return nil,fmt.Errorf("tenant %s recipes: %w",c.ID,err)}
   path:=filepath.Join(absolute,c.ID+".sqlite")
   for _,name:=range []string{path,path+"-wal",path+"-shm"}{
    f,err:=os.Lstat(name);if err==nil&&!f.Mode().IsRegular(){return nil,errors.New("tenant store must be a regular file")}
@@ -54,7 +55,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
   e,err:=openSQLiteRetailEngineForTenant(path,c.ID)
   if err!=nil{return nil,fmt.Errorf("tenant %s: %w",c.ID,err)}
   mux:=http.NewServeMux();e.register(mux)
-  g.entries[c.ID]=tenantEntry{sha256.Sum256([]byte("Bearer "+c.Token)),e,mux,brand,catalog}
+  g.entries[c.ID]=tenantEntry{sha256.Sum256([]byte("Bearer "+c.Token)),e,mux,brand,catalog,recipes}
  }
  return g,nil
 }
@@ -63,7 +64,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
 func tenantAllowed(path,method string)bool{
  switch path{
  case "brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
- case "universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
+ case "recipe-cost","universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
  case "orders","demand/plan":return method=="POST"
  }
  return false
@@ -81,6 +82,7 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  if r.URL.Query().Has("tenant")||r.URL.Query().Has("tenantId")||r.Header.Get("X-Tenant-ID")!=""{fail(w,400,"tenant selection must use path only");return}
  if parts[2]=="brand"{respond(w,200,entry.brand);return}
  if parts[2]=="universal-catalog"{serveUniversal(w,r,entry.catalog);return}
+ if parts[2]=="recipe-cost"{serveRecipe(w,r,entry.catalog,entry.recipes);return}
  clone:=r.Clone(r.Context());clone.URL.Path="/api/retail/"+parts[2];clone.URL.RawPath=""
  clone.RequestURI=clone.URL.RequestURI()
  // Authentication already happened. Never forward operator credentials.
