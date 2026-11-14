@@ -121,17 +121,21 @@ func openRetailEngine(path string) (*retailEngine,error) {
 }
 // Caller holds engine lock. This deep copy is only needed for persistent mode.
 func (e *retailEngine) beforeMutation() ([]byte,error) {
-	if e.checkpointPath=="" {return nil,nil}
+	if e.checkpointPath=="" && e.sqliteSave==nil {return nil,nil}
 	return json.Marshal(e.state())
 }
 func (e *retailEngine) commitMutation(before []byte) error {
-	if e.checkpointPath=="" {return nil}
-	err:=e.saveCheckpoint()
+	if e.checkpointPath=="" && e.sqliteSave==nil {return nil}
+	var err error
+	if e.sqliteSave!=nil {err=e.sqliteSave(before,e.state())} else {err=e.saveCheckpoint()}
 	if err!=nil {
 		var previous retailState
 		// before was generated from this engine under its lock.
 		if decodeErr:=json.Unmarshal(before,&previous);decodeErr!=nil {panic(decodeErr)}
 		e.restore(previous)
+		// An ambiguous SQLite failure or stale writer requires reopen; do not
+		// serve possibly stale confirmations or accept further transactions.
+		if e.sqliteSave!=nil {e.storageFailed=true}
 	}
 	return err
 }
