@@ -25,7 +25,7 @@ Existing CI runs Go tests, race detector, React build, and restaurant/kiosk test
 
 ## Next phases
 
-1. PostgreSQL migrations, tenant/store identity, transactionally locked inventory and idempotency receipts, authenticated customer/operator/courier roles.
+1. SQLite durable transactions and outbox for a pinned LiminalDB evidence adapter; tenant/store identity, inventory and idempotency receipts, authenticated roles. PostgreSQL only when concurrency or deployment requirements justify migration. See [Zero License Cost](zero-license-cost.md).
 2. Packaged and weighted SKU pricing, stock adjustment ledger, expiration tracking, substitutions with explicit consent, order snapshots, refunds.
 3. Delivery zones/slots, dispatch and courier assignment, permitted real-time tracking, clear ETA, delivery economics.
 4. Repeat purchases, favorites, consent-based loyalty, demand requests and merchant analytics for contribution margin, stockouts, spoilage and retention.
