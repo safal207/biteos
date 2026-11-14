@@ -57,3 +57,14 @@ For a real pilot: measure contribution per eligible session, completed order rat
 ## Acceptance and QA
 
 No GPS/network dependency for rankings. TR/RU/EN labels. Morning, evening, neutral ordering, insufficient stock, and budget-gate tests; preserve existing list edits and current cart until user applies. Verify mobile at 360 px, keyboard navigation, contrast, static vs local backend, and no restaurant/kiosk regressions before merge. Exact-head CI required.
+
+## Rhythm & Favorite v0.3
+
+Two user-controlled feedback loops now exist in the browser:
+- Favorite SKU -> explicit preference -> quick review of current product -> editable draft -> explicit cart replacement. The favorite does not grant a discount, points, a price guarantee or a reservation. No server-side financial effect.
+- Saved/last fulfilled list -> frozen list snapshot + chosen first date + 1–90 calendar-day interval -> review due when the app is opened/focused -> validate current catalog/price/stock/budget -> explicit cart replacement if desired. The user may acknowledge a due review separately; the next date is the actual acknowledgement date plus interval. No backlog of orders, no inferred consumption, no background timers, no emails/push/SMS.
+- Date calculations are civil calendar days, not elapsed local hours; today comes from the browser local calendar, not physical location. Focus/visibility refresh updates today; a continuously open focused page may need refresh after midnight.
+- Browser-local preference storage is isolated between static and API modes. Separate clear controls remove preference records and saved/last lists; deleting source lists does not silently delete the separate rhythm snapshot. The user can remove the plan itself. Storage errors are visible on write; no remote account, cross-device synchronization, demographics or real customer data.
+- Existing stock/price checks and explicit checkout remain mandatory. A preference is not evidence of external consent or payment. Nothing from this module is sent to LiminalDB.
+- Next financial gate: authenticated member/store, user opt-in, versioned non-stacking offer, conservative available-lot margin check at redemption, transactional reward budget, refund/reversal rules and idempotency. Do not activate discounts before these exist.
+- Tests cover invalid dates, leap day, interval bounds, date rollover, snapshot independence, premature acknowledgement and malformed preference state. Require exact-head CI and browser regression.
