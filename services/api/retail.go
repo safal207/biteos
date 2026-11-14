@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Retail is an isolated, in-memory demonstration. No real dispatch, payments or personal data.
+// Retail is an isolated local demonstration. No real dispatch, payments or personal data.
 type retailProduct struct {
 	ID string `json:"id"`
 	Name map[string]string `json:"name"`
@@ -56,8 +56,8 @@ type retailOrder struct {
 	Events []retailEvent `json:"events"`
 }
 type retailReplay struct {
-	hash [32]byte
-	id string
+	Hash [32]byte
+	ID string
 }
 type retailEngine struct {
 	mu sync.Mutex
@@ -68,6 +68,7 @@ type retailEngine struct {
 	movements []retailMovement
 	receipts map[string]retailReceipt
 	evidence []retailEvidence
+	checkpointPath string
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
@@ -121,8 +122,8 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if replay,ok := e.keys[key]; ok {
-		if replay.hash != hash { fail(w,409,"idempotency key conflict"); return }
-		respond(w,200,e.orders[replay.id]); return
+		if replay.Hash != hash { fail(w,409,"idempotency key conflict"); return }
+		respond(w,200,e.orders[replay.ID]); return
 	}
 	if len(e.orders)>=1000 { fail(w,503,"demo capacity reached"); return }
 	if len(req.Items)==0 || len(req.Items)>50 || (req.Mode!="pickup" && req.Mode!="delivery") || (req.Replacement!="contact" && req.Replacement!="skip") {
@@ -155,6 +156,8 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	if _,err:=rand.Read(id[:]);err!=nil { fail(w,503,"order identifier unavailable"); return }
 	o.ID="retail-"+hex.EncodeToString(id[:])
 	o.Events=[]retailEvent{{o.Status,time.Now().UTC()}}
+	before,err:=e.beforeMutation()
+	if err!=nil {fail(w,503,"checkpoint unavailable");return}
 	for i,line:=range o.Lines {
 		e.products[indexes[i]].Stock-=line.Quantity
 		e.recordMovement(line.ID,"reserve",-line.Quantity,o.ID,0)
@@ -163,6 +166,7 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	e.orders[o.ID]=o
 	e.keys[key]=retailReplay{hash,o.ID}
 	e.emitEvidence(o.ID,"order","reserved",1)
+	if err=e.commitMutation(before);err!=nil {fail(w,503,"checkpoint unavailable");return}
 	respond(w,201,o)
 }
 func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
@@ -179,6 +183,8 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	if o.Mode=="delivery" {next["packed"]="in_transit";next["in_transit"]="delivered"} else { next["packed"]="collected" }
 	cancel:=action.Status=="cancelled" && (o.Status=="reserved" || o.Status=="picking" || o.Status=="packed")
 	if !cancel && (next[o.Status]=="" || next[o.Status]!=action.Status) { fail(w,409,"invalid transition"); return }
+	before,err:=e.beforeMutation()
+	if err!=nil {fail(w,503,"checkpoint unavailable");return}
 	if cancel {
 		for _,line:=range o.Lines { for i,p:=range e.products { if p.ID==line.ID { e.products[i].Stock+=line.Quantity; e.recordMovement(line.ID,"release",line.Quantity,o.ID,0); break } } }
 		if o.SlotID!="" { e.usedSlots[o.SlotID]-- }
@@ -187,5 +193,6 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	o.Events=append(o.Events,retailEvent{o.Status,time.Now().UTC()})
 	e.orders[o.ID]=o
 	e.emitEvidence(o.ID,"order",o.Status,len(o.Events))
+	if err=e.commitMutation(before);err!=nil {fail(w,503,"checkpoint unavailable");return}
 	respond(w,200,o)
 }
