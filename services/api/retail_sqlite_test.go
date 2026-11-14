@@ -107,3 +107,17 @@ func TestRetailSQLiteEvidenceSyncFixture(t *testing.T){
 	r.ExternalEffectsAuthorized=true
 	if err=verifyImportReceipt(b,r);err==nil{t.Fatal("storage receipt granted external authority")}
 }
+
+func TestRetailSQLiteDemandReplay(t *testing.T){
+ path:=filepath.Join(t.TempDir(),"demand.db")
+ _,mux:=sqliteMux(t,path)
+ body:=`{"candidateId":"tvorog","quantity":2}`
+ w:=retailCall(mux,"POST","/api/retail/demand","sqlite-demand-1",body)
+ if w.Code!=201{t.Fatal(w.Code,w.Body.String())}
+ e,mux:=sqliteMux(t,path)
+ w=retailCall(mux,"POST","/api/retail/demand","sqlite-demand-1",body)
+ if w.Code!=200||len(e.demandSignals)!=1||len(e.evidence)!=0{t.Fatal("demand replay",w.Code)}
+ checkpointCreate(t,mux)
+ e,_=sqliteMux(t,path)
+ if len(e.demandSignals)!=1||len(e.orders)!=1||len(e.evidence)!=1{t.Fatal("demand/order isolation")}
+}
