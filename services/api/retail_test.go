@@ -107,3 +107,36 @@ func TestRetailReceivingReplay(t *testing.T) {
 	if w.Code!=409 || e.products[2].Stock!=25 {t.Fatal(w.Code)}
 	if e.movements[0].UnitCost!=3100 || e.movements[0].Delta!=5 {t.Fatal(e.movements)}
 }
+
+// A stale or incomplete price precondition cannot reserve stock, a slot,
+// an idempotency key, or append evidence. A confirmed retry is safe.
+func TestRetailCheckoutPricePrecondition(t *testing.T) {
+ e:=newRetailEngine()
+ mux:=http.NewServeMux()
+ e.register(mux)
+ before,_:=json.Marshal(e.state())
+ prefix:=`{"items":[{"id":"milk","quantity":2}],"mode":"delivery","replacement":"skip","zoneId":"center","slotId":"center-a","expectedPrice":`
+ key:="quote-confirm-test"
+ for _,q:=range []string{
+  `{"unitPrices":{"milk":4800},"fee":3500}`,
+  `{"unitPrices":{"milk":4900},"fee":3400}`,
+  `{"unitPrices":{"milk":4900}}`,
+  `{"unitPrices":{"bread":4900},"fee":3500}`,
+  `{"unitPrices":{"milk":4900,"bread":6500},"fee":3500}`,
+ }{
+  w:=retailCall(mux,"POST","/api/retail/orders",key,prefix+q+"}")
+  after,_:=json.Marshal(e.state())
+  if w.Code!=412 || !bytes.Equal(before,after) || len(e.keys)!=0 {t.Fatal("stale quote changed state",w.Code,w.Body.String())}
+ }
+ body:=prefix+`{"unitPrices":{"milk":4900},"fee":3500}}`
+ w:=retailCall(mux,"POST","/api/retail/orders",key,body)
+ if w.Code!=201 {t.Fatal(w.Code,w.Body.String())}
+ var o retailOrder
+ if err:=json.Unmarshal(w.Body.Bytes(),&o);err!=nil||o.Total!=13300{t.Fatal(o,err)}
+ after,_:=json.Marshal(e.state())
+ w=retailCall(mux,"POST","/api/retail/orders",key,body)
+ replay,_:=json.Marshal(e.state())
+ if w.Code!=200||!bytes.Equal(after,replay){t.Fatal("quote replay changed state",w.Code)}
+ w=retailCall(mux,"POST","/api/retail/orders",key,prefix+`{"unitPrices":{"milk":4900},"fee":3501}}`)
+ if w.Code!=409{t.Fatal("changed quote under accepted key",w.Code)}
+}

@@ -270,3 +270,7 @@ Existing CI runs Go tests, race detector, React build, and restaurant/kiosk test
 5. SEO storefront and licensed product photos; verified catalog and explicit owner permission before pilot.
 
 Go owns transactions and prices. Keep Rust suggestions isolated and optional; no Rust changes required for retail. React/TypeScript/Vite remains the shared UI. No live brand affiliation is claimed.
+
+## Checkout price precondition (local pilot groundwork)
+
+The local retail UI sends optional `expectedPrice: {unitPrices: {sku: minorUnits}, fee: minorUnits}` with the checkout request. Under the reservation lock the server compares the complete SKU price map and delivery fee to authoritative values before writing stock, slot, order, idempotency or evidence state. A mismatch returns HTTP 412; the UI refreshes the catalog and requests explicit confirmation, never auto-submits. Existing accepted idempotency keys replay before price checks; changing the confirmed request under an accepted key still conflicts. Omitting the precondition retains legacy demo API compatibility (not a production authorization gate). No price hold, payment, durable client retry or live commerce authorization is implied. Exact-head CI is required.

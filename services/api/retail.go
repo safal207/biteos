@@ -24,12 +24,18 @@ type retailItem struct {
 	ID string `json:"id"`
 	Quantity int `json:"quantity"`
 }
+// An optional checkout precondition; never a client-controlled selling price.
+type retailExpectedPrice struct {
+	UnitPrices map[string]int64 `json:"unitPrices"`
+	Fee *int64 `json:"fee"`
+}
 type retailRequest struct {
 	Items []retailItem `json:"items"`
 	Mode string `json:"mode"`
 	Replacement string `json:"replacement"`
 	ZoneID string `json:"zoneId"`
 	SlotID string `json:"slotId"`
+	ExpectedPrice *retailExpectedPrice `json:"expectedPrice,omitempty"`
 }
 type retailLine struct {
 	ID string `json:"id"`
@@ -176,6 +182,15 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 		o.ZoneID=zone.ID; o.SlotID=slot.ID; o.Fee=zone.Fee
 	} else if req.ZoneID!="" || req.SlotID!="" { fail(w,422,"pickup has no delivery slot"); return }
 	o.Total=o.Subtotal+o.Fee
+	// Check under the same lock as stock/capacity reservation, before any mutation.
+	// A successful prior request is replayed above even if prices have since changed.
+	if q:=req.ExpectedPrice;q!=nil {
+		if q.Fee==nil || *q.Fee!=o.Fee || len(q.UnitPrices)!=len(o.Lines) { fail(w,412,"checkout price changed"); return }
+		for _,line:=range o.Lines {
+			price,ok:=q.UnitPrices[line.ID]
+			if !ok || price!=line.UnitPrice { fail(w,412,"checkout price changed"); return }
+		}
+	}
 	var id [16]byte
 	if _,err:=rand.Read(id[:]);err!=nil { fail(w,503,"order identifier unavailable"); return }
 	o.ID="retail-"+hex.EncodeToString(id[:])

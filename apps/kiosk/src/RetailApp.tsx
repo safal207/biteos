@@ -75,6 +75,7 @@ export function RetailApp(){
   const [order,setOrder]=useState<RetailOrder|null>(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
+  const [priceChanged,setPriceChanged]=useState(false);
   const [reserved,setReserved]=useState<{id:string;quantity:number}[]>([]);
   const key=useRef("");
   const pending=useRef(false);
@@ -93,7 +94,7 @@ export function RetailApp(){
   }
   async function submit(){
     if(pending.current||order||!items.length||deliveryInvalid)return;
-    pending.current=true;setBusy(true);setError(false);
+    pending.current=true;setBusy(true);setError(false);setPriceChanged(false);
     try{
       if(items.some(i=>i.quantity>(products.find(p=>p.id===i.id)?.stock??0)))throw new Error("stock");
       if(IS_DEMO){
@@ -104,13 +105,19 @@ export function RetailApp(){
         setOrder({id:"demo-"+crypto.randomUUID().slice(0,8),mode,zoneId:mode==="delivery"?zoneID:undefined,slotId:mode==="delivery"?slotID:undefined,status:"reserved",total:subtotal+fee,events:[{status:"reserved",at:new Date().toISOString()}]});
       }else{
         if(!key.current)key.current=crypto.randomUUID();
-        const o=await getJSON<RetailOrder>("/api/retail/orders",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":key.current},body:JSON.stringify({items,mode,replacement,zoneId:mode==="delivery"?zoneID:"",slotId:mode==="delivery"?slotID:""})});
+        const o=await getJSON<RetailOrder>("/api/retail/orders",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":key.current},body:JSON.stringify({items,mode,replacement,zoneId:mode==="delivery"?zoneID:"",slotId:mode==="delivery"?slotID:"",expectedPrice:{unitPrices:Object.fromEntries(items.map(i=>[i.id,products.find(p=>p.id===i.id)?.price])),fee}})});
         setOrder(o);
         setOrderList(o.lines?.map(l=>({id:l.id,quantity:l.quantity,previousPrice:l.unitPrice}))??[]);
         void refresh().catch(()=>setError(true));
       }
       setCart({});key.current="";
-    }catch{setError(true);}finally{pending.current=false;setBusy(false);}
+    }catch(err){
+      if(err instanceof Error&&err.message==="412"){
+        // This rejection precedes reservation; require a new explicit submit after refresh.
+        key.current="";setPriceChanged(true);
+        try{await refresh()}catch{setError(true)}
+      }else setError(true);
+    }finally{pending.current=false;setBusy(false);}
   }
   const next=order?({reserved:"picking",picking:"packed",packed:order.mode==="delivery"?"in_transit":"collected",in_transit:"delivered"} as Record<string,string>)[order.status]:undefined;
   const canCancel=order&&["reserved","picking","packed"].includes(order.status);
@@ -137,6 +144,7 @@ export function RetailApp(){
     <header><a href="#">← BiteOS</a><strong>ROZAL <small>MARKET</small></strong><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="tr">TR</option><option value="ru">RU</option><option value="en">EN</option></select></header>
     <section className="retail-hero"><p>GAZİPAŞA · CONCEPT</p><h1>{t.title}</h1><p>{t.demo}</p></section>
     {error&&<p role="alert">{t.error}</p>}
+    {priceChanged&&<p role="alert">{lang==="tr"?"Fiyat değişti. Sepeti kontrol edip yeniden onaylayın.":lang==="ru"?"Цена изменилась. Проверьте корзину и подтвердите заказ заново.":"Price changed. Review your cart and confirm again."}</p>}
     {order?<section className="retail-cart"><h2>{t.order} · {order.id.slice(-8)}</h2><h3>{money(order.total)}</h3><ol>{order.events.map((ev,i)=><li key={i}>{track[ev.status]?.[lang]||ev.status}</li>)}</ol>{next&&<button disabled={busy} onClick={()=>void advance(next)}>{t.next}</button>}{canCancel&&<button disabled={busy} onClick={()=>void advance("cancelled")}>{t.cancel}</button>}{!next&&!canCancel&&<button onClick={()=>{setOrder(null);setReserved([]);}}>{t.repeat}</button>}</section>:<>
     {!items.length&&<p><a href="#retail-demand">{lang==="tr"?"Eksik ürün isteyin":lang==="ru"?"Предложить товар для ассортимента":"Request a missing product"}</a></p>}
     <RetailClubPanel lang={lang} products={products} cart={cart} saved={savedList} last={lastList} busy={busy} storageError={storageError} onSave={list=>saveClub("saved",list)} onClear={clearClub} onApply={next=>{if(pending.current)return;key.current="";setCart(next)}}/>
