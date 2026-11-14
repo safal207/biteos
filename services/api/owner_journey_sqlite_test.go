@@ -46,5 +46,8 @@ func TestOwnerJourneyThroughTenantGateway(t *testing.T){
  var memory businessMemoryReport
  if err=json.Unmarshal(call("GET","business-memory",nil,200),&memory);err!=nil||len(memory.Rows)!=1||memory.Rows[0].ForecastDigest!=forecast.Digest||memory.Rows[0].RecipeReviewDigest==""||memory.Rows[0].Reason!="test-demand"||memory.Rows[0].RecordedByRole!="owner"||memory.Rows[0].CausalEffectEstablished||memory.ExternalEffectsAuthorized{t.Fatal(memory,err)}
  if w:=tenantCall(g,"GET",base+"business-memory",config[0].Token,"","");w.Code!=401{t.Fatal("foreign memory access",w.Code)}
+ var learning businessLearningReport
+ if err=json.Unmarshal(call("GET","business-learning",nil,200),&learning);err!=nil||learning.Completed!=0||learning.Pending!=1||len(learning.Cohorts)!=0||learning.ExternalEffectsAuthorized{t.Fatal(learning,err)}
+ if w:=tenantCall(g,"GET",base+"business-learning",config[0].Token,"","");w.Code!=401{t.Fatal("foreign learning access",w.Code)}
  if len(g.entries["robys"].engine.recipeReviews)!=1||len(g.entries["rozal"].engine.recipeReviews)!=0||len(g.entries["rozal"].engine.observationPlans)!=0{t.Fatal("review or tenant isolation")}
 }
