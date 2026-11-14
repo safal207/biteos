@@ -208,6 +208,6 @@ Key inspected source artifacts (GitHub content blob hashes, not commit IDs):
 - [cross-lingual-value-drift](https://github.com/safal207/cross-lingual-value-drift) — README not accessible; no reuse selected.
 - [morphomatter](https://github.com/safal207/morphomatter) — README not accessible; no reuse selected.
 
-### Metadata only / not individually assessed
+### External security reference — no current integration
 
-- [oss-scanner](https://github.com/safal207/oss-scanner) — no supported selection yet; inspect source first.
+- [oss-scanner](https://github.com/safal207/oss-scanner) — README describes a third-party managed scanning service and enrollment terms; consider authorized security review separately, not as a BiteOS runtime dependency.
