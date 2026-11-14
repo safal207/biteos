@@ -20,7 +20,7 @@ func TestRetailReserveReplayCancel(t *testing.T) {
 	e:=newRetailEngine()
 	mux:=http.NewServeMux()
 	e.register(mux)
-	body:=`{"items":[{"id":"milk","quantity":2}],"mode":"delivery","replacement":"contact"}`
+	body:=`{"items":[{"id":"milk","quantity":2}],"mode":"delivery","replacement":"contact","zoneId":"center","slotId":"center-a"}`
 	w:=retailCall(mux,"POST","/api/retail/orders","demo-key-1",body)
 	if w.Code!=201 {t.Fatal(w.Code,w.Body.String())}
 	var o retailOrder
@@ -60,4 +60,49 @@ func TestRetailFailedBasketDoesNotChangeStock(t *testing.T) {
 	body:=`{"items":[{"id":"milk","quantity":1},{"id":"missing","quantity":1}],"mode":"pickup","replacement":"skip"}`
 	w:=retailCall(mux,"POST","/api/retail/orders","demo-key-2",body)
 	if w.Code!=422 || e.products[2].Stock!=20 {t.Fatal(w.Code,e.products[2])}
+}
+
+func TestRetailDeliveryCapacityAndCancellation(t *testing.T) {
+	e:=newRetailEngine()
+	mux:=http.NewServeMux()
+	e.register(mux)
+	body:=`{"items":[{"id":"milk","quantity":2}],"mode":"delivery","replacement":"skip","zoneId":"center","slotId":"center-a"}`
+	var first retailOrder
+	for _,key:=range []string{"capacity-a","capacity-b","capacity-c"} {
+		w:=retailCall(mux,"POST","/api/retail/orders",key,body)
+		if w.Code!=201 {t.Fatal(w.Code,w.Body.String())}
+		if first.ID=="" {if err:=json.Unmarshal(w.Body.Bytes(),&first);err!=nil{t.Fatal(err)}}
+	}
+	w:=retailCall(mux,"POST","/api/retail/orders","capacity-d",body)
+	if w.Code!=409 || e.products[2].Stock!=14 {t.Fatal(w.Code,e.products[2])}
+	w=retailCall(mux,"POST","/api/retail/order?id="+first.ID,"",`{"status":"cancelled"}`)
+	if w.Code!=200 {t.Fatal(w.Code)}
+	w=retailCall(mux,"POST","/api/retail/orders","capacity-d",body)
+	if w.Code!=201 || e.usedSlots["center-a"]!=3 {t.Fatal(w.Code,e.usedSlots)}
+}
+func TestRetailDeliveryValidation(t *testing.T) {
+	e:=newRetailEngine()
+	mux:=http.NewServeMux()
+	e.register(mux)
+	for _,b:=range []string{
+		`{"items":[{"id":"milk","quantity":1}],"mode":"delivery","replacement":"skip","zoneId":"outer","slotId":"outer-a"}`,
+		`{"items":[{"id":"milk","quantity":4}],"mode":"delivery","replacement":"skip","zoneId":"outer","slotId":"center-a"}`,
+		`{"items":[{"id":"milk","quantity":1}],"mode":"pickup","replacement":"skip","zoneId":"center","slotId":"center-a"}`,
+	}{
+		w:=retailCall(mux,"POST","/api/retail/orders","validation-a",b)
+		if w.Code!=422 || e.products[2].Stock!=20 || len(e.movements)!=0 {t.Fatal(w.Code)}
+	}
+}
+func TestRetailReceivingReplay(t *testing.T) {
+	e:=newRetailEngine()
+	mux:=http.NewServeMux()
+	e.register(mux)
+	body:=`{"productId":"milk","quantity":5,"unitCost":3100,"reference":"demo-invoice"}`
+	for i,want:=range []int{201,200}{
+		w:=retailCall(mux,"POST","/api/retail/inventory","receiving-1",body)
+		if w.Code!=want || e.products[2].Stock!=25 || len(e.movements)!=1 {t.Fatal(i,w.Code)}
+	}
+	w:=retailCall(mux,"POST","/api/retail/inventory","receiving-1",`{"productId":"milk","quantity":6,"unitCost":3100,"reference":"demo-invoice"}`)
+	if w.Code!=409 || e.products[2].Stock!=25 {t.Fatal(w.Code)}
+	if e.movements[0].UnitCost!=3100 || e.movements[0].Delta!=5 {t.Fatal(e.movements)}
 }
