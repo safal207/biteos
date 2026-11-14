@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// Local, in-memory outbox proof. Business commits and events share the engine lock.
-// No durable acknowledgement, external authority, or LiminalDB write is claimed.
+// Local evidence outbox proof. Business commits and events share the engine lock.
+// No external acknowledgement, authority, or LiminalDB write is claimed.
 type retailEvidence struct {
 	Version int `json:"version"`
 	EventID string `json:"eventId"`
@@ -46,9 +46,11 @@ func(e *retailEngine) evidenceReport(w http.ResponseWriter,r *http.Request){
 	if !method(w,r,"GET"){return}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	storage:="memory"
+	if e.checkpointPath!="" {storage="local-checkpoint"}
 	events:=e.evidence
 	if len(events)>100 {events=events[len(events)-100:]}
-	respond(w,200,map[string]any{"demo":true,"durable":false,"externalAcknowledged":false,"events":events})
+	respond(w,200,map[string]any{"demo":true,"durable":false,"storage":storage,"externalAcknowledged":false,"events":events})
 }
 
 // Conservative decision proposal, not authority or permission to execute.
