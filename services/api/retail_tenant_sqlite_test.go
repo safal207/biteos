@@ -10,6 +10,7 @@ import(
  "path/filepath"
  "strings"
  "testing"
+ "time"
 )
 
 func tenantFixture()[]tenantConfig{return []tenantConfig{{"rozal","tenant-test-rozal-credential-000000000"},{"robys","tenant-test-robys-credential-000000000"}}}
@@ -160,4 +161,43 @@ func TestTenantEconomicBoundary(t *testing.T){
  if w=tenantCall(g,"POST",b,config[0].Token,"",string(body));w.Code!=401{t.Fatal("foreign credential",w.Code)}
  if w=tenantCall(g,"POST",a,config[0].Token,"",string(body));w.Code!=422{t.Fatal("foreign item",w.Code)}
  after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("scenario mutated state")}
+}
+
+func TestTenantObservatoryPersistence(t *testing.T){
+ root:=t.TempDir();config:=tenantFixture();g,err:=openTenantGateway(root,config);if err!=nil{t.Fatal(err)}
+ entry:=g.entries["robys"]
+ _,plan,now:=observatoryFixture(t)
+ path:="/api/tenants/robys/retail/observatory"
+ token:=config[1].Token
+ before:=entry.engine.state()
+ planJSON:=obsBytes(plan)
+ if w:=tenantCall(g,"POST",path+"/plan",config[0].Token,"",planJSON);w.Code!=401{t.Fatal("foreign key",w.Code)}
+ if w:=tenantCall(g,"POST","/api/tenants/rozal/retail/observatory/plan",config[0].Token,"",planJSON);w.Code!=422{t.Fatal("foreign forecast",w.Code)}
+ // Fake clock is injected exclusively through the internal helper in tests.
+ call:=func(entry tenantEntry,op,body string,at time.Time)*httptest.ResponseRecorder{
+  r:=httptest.NewRequest("POST",path+"/"+op,strings.NewReader(body))
+  w:=httptest.NewRecorder();serveObservatoryAt(w,r,entry,op,at);return w
+ }
+ w:=call(entry,"plan",planJSON,now)
+ var p observationPlan
+ if w.Code!=201||json.Unmarshal(w.Body.Bytes(),&p)!=nil||!validObservationPlan(p,"robys"){t.Fatal(w.Code,w.Body.String())}
+ if w=call(entry,"plan",planJSON,now);w.Code!=200{t.Fatal("plan replay",w.Code)}
+ altered:=plan;altered.StartDay="2026-11-16"
+ if w=call(entry,"plan",obsBytes(altered),now);w.Code!=409{t.Fatal("plan conflict",w.Code)}
+ input:=observedFixture(p)
+ if w=call(entry,"observation",obsBytes(input),now);w.Code!=422{t.Fatal("early",w.Code)}
+ w=call(entry,"observation",obsBytes(input),now.AddDate(0,0,3))
+ var result observationResult
+ if w.Code!=201||json.Unmarshal(w.Body.Bytes(),&result)!=nil||result.ActualSold!=55||result.CausalEffectEstablished{t.Fatal(w.Code,w.Body.String())}
+ if w=call(entry,"observation",obsBytes(input),now.AddDate(0,0,3));w.Code!=200{t.Fatal("observation replay",w.Code)}
+ changed:=input;changed.CampaignCost++
+ if w=call(entry,"observation",obsBytes(changed),now.AddDate(0,0,3));w.Code!=409{t.Fatal("observation conflict",w.Code)}
+ state:=entry.engine.state();state.ObservationPlans=nil;state.ObservationResults=nil
+ if obsBytes(before)!=obsBytes(state){t.Fatal("observatory changed commerce")}
+ g,err=openTenantGateway(root,config);if err!=nil{t.Fatal(err)}
+ w=tenantCall(g,"GET",path,token,"","")
+ var list struct{Plans []observationPlan;Observations []observationResult}
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&list)!=nil||len(list.Plans)!=1||len(list.Observations)!=1||list.Observations[0].Digest!=result.Digest{t.Fatal(w.Code,w.Body.String())}
+ w=tenantCall(g,"GET","/api/tenants/rozal/retail/observatory",config[0].Token,"","")
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&list)!=nil||len(list.Plans)!=0||len(list.Observations)!=0{t.Fatal("cross-tenant history",w.Code)}
 }
