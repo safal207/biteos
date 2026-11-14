@@ -92,3 +92,16 @@ func TestTenantUniversalCatalogBoundary(t *testing.T){
  if w=tenantCall(g,"GET",b,config[0].Token,"","");w.Code!=401{t.Fatal("foreign key",w.Code)}
  after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("quote mutated state")}
 }
+
+func TestTenantRecipeBoundary(t *testing.T){
+ config:=tenantFixture();g,err:=openTenantGateway(t.TempDir(),config);if err!=nil{t.Fatal(err)}
+ a,b:="/api/tenants/rozal/retail/recipe-cost","/api/tenants/robys/retail/recipe-cost"
+ before,_:=json.Marshal(g.entries["robys"].engine.state())
+ body:=`{"itemId":"latte","variantId":"large","quantity":2,"selections":{"extras":["extra-shot","oat-drink"]}}`
+ w:=tenantCall(g,"POST",b,config[1].Token,"",body)
+ var r recipeCostReport
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&r)!=nil||r.DirectCost!=12400||r.GrossContribution!=16600||r.Quote.TenantID!="robys"||r.ExternalEffectsAuthorized{t.Fatal(w.Code,w.Body.String())}
+ if w=tenantCall(g,"POST",a,config[0].Token,"",body);w.Code!=422{t.Fatal("foreign recipe",w.Code)}
+ if w=tenantCall(g,"GET",b,config[0].Token,"","");w.Code!=401{t.Fatal("foreign credential",w.Code)}
+ after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("cost simulation mutated state")}
+}
