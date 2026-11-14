@@ -37,6 +37,7 @@ export function RetailFinance(){
  <section className="retail-hero"><p>ROZAL · BUSINESS DEMO</p><h1>{t.title}</h1><p>{IS_DEMO?t.sample:t.local}</p></section>
  <p><a href="#retail-growth">{lang==="tr"?"Kampanya planlayıcı":lang==="ru"?"Планировщик акций":"Promotion planner"}</a></p>
  <p><a href="#retail-demand-business">{lang==="tr"?"Talep ve satın alma":lang==="ru"?"Спрос и закупки":"Demand and procurement"}</a></p>
+ <p><a href="#retail-lifetime">{lang==="tr"?"Parti ömrü":lang==="ru"?"Сроки годности партий":"Inventory lifetime"}</a></p>
  {!IS_DEMO&&<button disabled={busy} onClick={()=>setVersion(x=>x+1)}>{t.refresh}</button>}
  {busy&&<p role="status">{t.loading}</p>}{error&&<p role="alert">{t.error}</p>}
  {report&&<>
