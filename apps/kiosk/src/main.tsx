@@ -51,6 +51,7 @@ import { RetailSpatial } from "./RetailSpatial";
 import { RetailBrain } from "./RetailBrain";
 import { RetailBusiness } from "./RetailBusiness";
 import { RetailBrand } from "./RetailBrand";
+import { RetailUniversalCatalog } from "./RetailUniversalCatalog";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -1450,6 +1451,7 @@ function BiteOS() {
   if (route === "#retail-brain") return <RetailBrain />;
   if (route === "#retail-business") return <RetailBusiness />;
   if (route === "#retail-brand") return <RetailBrand />;
+  if (route === "#retail-catalog-studio") return <RetailUniversalCatalog />;
   return route === "#kiosk" ? <App /> : <DeliveryApp />;
 }
 
