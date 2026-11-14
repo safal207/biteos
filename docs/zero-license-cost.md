@@ -16,7 +16,7 @@ Status: accepted engineering direction, not a completed legal audit.
 | Function | Default | Escalation only if necessary |
 | --- | --- | --- |
 | Business transactions | Go database/sql and SQLite | PostgreSQL |
-| Go SQLite driver | modernc.org/sqlite (BSD-3-Clause; bundled code review required) | alternative after compatibility review |
+| SQLite binding | optional narrow CGO binding to system libsqlite3 (public domain; distro packaging review required) | pure-Go driver after compatibility/dependency review |
 | Evidence/continuity | LiminalDB (Apache-2.0), pinned sidecar | independent validation |
 | Search | SQLite FTS5 / SQL | PostgreSQL FTS |
 | Analytics | SQL views | DuckDB |
