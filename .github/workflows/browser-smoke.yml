@@ -1,0 +1,32 @@
+name: BiteOS browser smoke
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - run: pnpm --dir apps/kiosk install --frozen-lockfile
+      - run: pnpm --dir apps/kiosk build:pages
+      - name: Install isolated browser test tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/biteos-browser" --no-save --ignore-scripts playwright@1.56.1
+          node "$RUNNER_TEMP/biteos-browser/node_modules/playwright/cli.js" install --with-deps ${{ matrix.browser }}
+      - name: Exercise Pages bundle
+        env:
+          BITEOS_BROWSER: ${{ matrix.browser }}
+        run: BITEOS_BROWSER_TOOLS="$RUNNER_TEMP/biteos-browser" node scripts/browser-smoke.mjs
