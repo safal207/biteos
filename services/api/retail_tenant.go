@@ -22,7 +22,7 @@ func validTenantID(id string)bool{
  return true
 }
 type tenantConfig struct{ID,Token string}
-type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux}
+type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux; brand brandProfile}
 type tenantGateway struct{entries map[string]tenantEntry}
 func validateTenantConfigs(config []tenantConfig)error{
  if len(config)<1||len(config)>8{return errors.New("configure 1–8 tenants")}
@@ -44,6 +44,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
  info,err:=os.Lstat(absolute);if err!=nil||!info.IsDir()||info.Mode()&os.ModeSymlink!=0{return nil,errors.New("tenant root must be a real directory")}
  g:=&tenantGateway{entries:map[string]tenantEntry{}}
  for _,c:=range config{
+  brand,err:=loadTenantBrand(absolute,c.ID);if err!=nil{return nil,fmt.Errorf("tenant %s brand: %w",c.ID,err)}
   path:=filepath.Join(absolute,c.ID+".sqlite")
   for _,name:=range []string{path,path+"-wal",path+"-shm"}{
    f,err:=os.Lstat(name);if err==nil&&!f.Mode().IsRegular(){return nil,errors.New("tenant store must be a regular file")}
@@ -52,7 +53,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
   e,err:=openSQLiteRetailEngineForTenant(path,c.ID)
   if err!=nil{return nil,fmt.Errorf("tenant %s: %w",c.ID,err)}
   mux:=http.NewServeMux();e.register(mux)
-  g.entries[c.ID]=tenantEntry{sha256.Sum256([]byte("Bearer "+c.Token)),e,mux}
+  g.entries[c.ID]=tenantEntry{sha256.Sum256([]byte("Bearer "+c.Token)),e,mux,brand}
  }
  return g,nil
 }
@@ -60,7 +61,7 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
 // legacy review/business and independent restaurant APIs are deliberately absent.
 func tenantAllowed(path,method string)bool{
  switch path{
- case "catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
+ case "brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
  case "order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
  case "orders","demand/plan":return method=="POST"
  }
@@ -77,6 +78,7 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  if !ok||subtle.ConstantTimeCompare(entry.digest[:],got[:])!=1{fail(w,401,"tenant credential required");return}
  // Reject tenant selection via query or header: path is authoritative.
  if r.URL.Query().Has("tenant")||r.URL.Query().Has("tenantId")||r.Header.Get("X-Tenant-ID")!=""{fail(w,400,"tenant selection must use path only");return}
+ if parts[2]=="brand"{respond(w,200,entry.brand);return}
  clone:=r.Clone(r.Context());clone.URL.Path="/api/retail/"+parts[2];clone.URL.RawPath=""
  clone.RequestURI=clone.URL.RequestURI()
  // Authentication already happened. Never forward operator credentials.
