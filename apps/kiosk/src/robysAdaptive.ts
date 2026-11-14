@@ -24,3 +24,26 @@ export function experience(mood:Mood,catalog:readonly Product[],budgetMinor:numb
 export const discoveries=["story","menu","taste"] as const;
 export type Discovery=typeof discoveries[number];
 export function addDiscovery(current:readonly Discovery[],next:Discovery){if(!discoveries.includes(next))throw Error("Unknown discovery");return [...new Set([...current.filter(x=>discoveries.includes(x)),next])]}
+
+export const seasonalLooks={
+ winter:{names:["Kış ışıkları","Зимние огни","Winter lights"],colors:["#69502e","#f8e7b7","#bb9261"]},
+ autumn:{names:["Sonbahar hikâyesi","Осенняя история","Autumn story"],colors:["#4b291b","#ffddad","#c7722f"]},
+ together:{names:["Birlikte","Вместе","Together"],colors:["#69334b","#ffe6ef","#bc7899"]},
+ family:{names:["Aile zamanı","Семейное время","Family time"],colors:["#6b4a25","#ffedbc","#c9a06e"]},
+ coffee:{names:["Kahve kültürü","Культура кофе","Coffee culture"],colors:["#483225","#ffedda","#aa7352"]},
+ chocolate:{names:["Çikolata molası","Шоколадная пауза","Chocolate break"],colors:["#452a25","#ffdec8","#a16e59"]},
+ thanks:{names:["Teşekkür zamanı","Время благодарности","A moment of thanks"],colors:["#475b49","#edf5db","#b0bb85"]}
+} as const;
+export type SeasonalLook=keyof typeof seasonalLooks;
+type OccasionSignal={kind:string;theme:string};
+export function chooseSeason(mood:Mood,occasions:readonly OccasionSignal[],optional:boolean,blocked:boolean):SeasonalLook|null{
+ if(mood==="standard"||blocked||occasions.some(o=>o.kind==="commemoration"))return null;
+ for(const o of occasions){if(o.kind==="optional"&&!optional)continue;const theme=o.theme==="turkish-coffee"?"coffee":o.theme;if(Object.hasOwn(seasonalLooks,theme))return theme as SeasonalLook}
+ return null;
+}
+export const moodColors:Record<Mood,readonly [string,string,string]>={standard:["#55453c","#fff4e5","#b49884"],cozy:["#493124","#fff4df","#b58966"],study:["#284936","#eef9e7","#8caf94"],friends:["#642d4b","#fff1f8","#c583a2"],family:["#65401e","#fff0c5","#d5ac6b"],fresh:["#174e4e","#e8fffa","#7bbfb3"]};
+export function storyCard(mood:Mood,lang:Lang,season:SeasonalLook|null){
+ if(!moods.includes(mood)||!["tr","ru","en"].includes(lang)||season!==null&&!Object.hasOwn(seasonalLooks,season))throw Error("Invalid story");
+ const i=["tr","ru","en"].indexOf(lang),colors=season?seasonalLooks[season].colors:moodColors[mood];
+ return {title:moodInfo[mood].titles[i],subtitle:season?seasonalLooks[season].names[i]:moodInfo[mood].names[i],colors,brand:"MY ROBY’S",footer:"ROBY’S COFFEE HOUSE • GAZİPAŞA",containsPersonalData:false};
+}

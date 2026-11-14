@@ -94,7 +94,8 @@ try{
   await page.getByLabel("Channel").selectOption("table_qr");
   assert.ok((await page.getByLabel("Campaign link").inputValue()).includes("utm_source=table_qr"));
   assert.equal(await page.locator("input[type=file]").count(),0);
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"campaign studio overflow");
+  const campaignLayout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,offenders:[...document.querySelectorAll("main.retail *")].map(e=>({tag:e.tagName,cls:String(e.className),right:Math.round(e.getBoundingClientRect().right)})).filter(x=>x.right>innerWidth+1).slice(0,12)}));
+  assert.ok(campaignLayout.scroll<=campaignLayout.width+1,"campaign studio overflow "+JSON.stringify(campaignLayout));
   await page.goto(base+"#retail-robys-loyalty");
   await page.getByLabel("Language").selectOption("en");
   await page.getByRole("heading",{name:"Roby’s loyalty intelligence"}).waitFor();
@@ -130,6 +131,11 @@ try{
   assert.ok(await page.getByText("1 / 3",{exact:true}).isVisible());
   const shared=await page.getByLabel("Share this look").inputValue();
   assert.ok(shared.includes("robysMood=friends")&&!shared.includes("progress"));
+  await page.getByLabel("Scenario date").fill("2027-10-31");
+  assert.equal(await page.locator("[data-robys-season]").getAttribute("data-robys-season"),"none");
+  await page.getByLabel("Optional holiday themes").check();
+  assert.equal(await page.locator("[data-robys-season]").getAttribute("data-robys-season"),"autumn");
+  const pngPromise=page.waitForEvent("download");await page.getByRole("button",{name:"Download story PNG"}).click();const png=await pngPromise;assert.match(png.suggestedFilename(),/\.png$/);assert.equal(await png.failure(),null);
   await page.getByRole("button",{name:"Standard menu",exact:true}).click();
   assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"standard");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"adaptive experience overflow");
