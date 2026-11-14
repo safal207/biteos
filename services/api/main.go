@@ -86,6 +86,7 @@ type Store struct {
 	records []Receipt
 }
 type Server struct {
+	retail *retailEngine
 	catalog   Catalog
 	store     *Store
 	engineURL string
@@ -269,7 +270,9 @@ func decode(w http.ResponseWriter, r *http.Request, b *Basket) bool {
 }
 func (s *Server) handler(webDir string) http.Handler {
 	mux := http.NewServeMux()
-	newRetailEngine().register(mux)
+	retail := s.retail
+	if retail == nil { retail = newRetailEngine() }
+	retail.register(mux)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		if method(w, r, "GET") {
 			respond(w, 200, map[string]string{"status": "ok", "service": "biteos-api"})
@@ -385,7 +388,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := &Server{catalog: loadCatalog(), store: store, engineURL: strings.TrimRight(env("ENGINE_URL", "http://127.0.0.1:8091"), "/"), client: &http.Client{Timeout: 800 * time.Millisecond}}
+	retailPath := env("RETAIL_STORE", filepath.Join(filepath.Dir(store.path), "retail-state.json"))
+	orderPath, err := filepath.Abs(store.path)
+	if err != nil {log.Fatal(err)}
+	checkpointPath, err := filepath.Abs(retailPath)
+	if err != nil {log.Fatal(err)}
+	if orderPath == checkpointPath {log.Fatal("retail and kiosk stores must be separate")}
+	retail, err := openRetailEngine(checkpointPath)
+	if err != nil {log.Fatal(err)}
+	s := &Server{retail: retail, catalog: loadCatalog(), store: store, engineURL: strings.TrimRight(env("ENGINE_URL", "http://127.0.0.1:8091"), "/"), client: &http.Client{Timeout: 800 * time.Millisecond}}
 	server := &http.Server{Addr: env("ADDR", "127.0.0.1:8090"), Handler: s.handler(env("WEB_DIR", "../../apps/kiosk/dist")), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
