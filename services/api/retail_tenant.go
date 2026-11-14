@@ -63,9 +63,9 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
 // legacy review/business and independent restaurant APIs are deliberately absent.
 func tenantAllowed(path,method string)bool{
  switch path{
- case "brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
+ case "observatory","brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
  case "recipe-cost/review","recipe-cost","universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
- case "economic-intelligence","recipe-cost/snapshot","orders","demand/plan":return method=="POST"
+ case "observatory/plan","observatory/observation","economic-intelligence","recipe-cost/snapshot","orders","demand/plan":return method=="POST"
  }
  return false
 }
@@ -86,6 +86,9 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  if parts[2]=="recipe-cost/snapshot"{serveRecipeSnapshot(w,r,entry);return}
  if parts[2]=="recipe-cost/review"{serveRecipeReview(w,r,entry);return}
  if parts[2]=="economic-intelligence"{serveEconomic(w,r,entry);return}
+ if parts[2]=="observatory"{serveObservatory(w,r,entry,"list");return}
+ if parts[2]=="observatory/plan"{serveObservatory(w,r,entry,"plan");return}
+ if parts[2]=="observatory/observation"{serveObservatory(w,r,entry,"observation");return}
  clone:=r.Clone(r.Context());clone.URL.Path="/api/retail/"+parts[2];clone.URL.RawPath=""
  clone.RequestURI=clone.URL.RequestURI()
  // Authentication already happened. Never forward operator credentials.
