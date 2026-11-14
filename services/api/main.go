@@ -388,13 +388,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	backend := env("RETAIL_BACKEND", "checkpoint")
+	if backend!="sqlite" && backend!="checkpoint" {log.Fatal("unknown retail backend")}
+	if backend=="sqlite" && os.Getenv("RETAIL_STORE")=="" {log.Fatal("SQLite requires an explicit RETAIL_STORE path; no automatic migration")}
 	retailPath := env("RETAIL_STORE", filepath.Join(filepath.Dir(store.path), "retail-state.json"))
 	orderPath, err := filepath.Abs(store.path)
 	if err != nil {log.Fatal(err)}
 	checkpointPath, err := filepath.Abs(retailPath)
 	if err != nil {log.Fatal(err)}
 	if orderPath == checkpointPath {log.Fatal("retail and kiosk stores must be separate")}
-	retail, err := openRetailEngine(checkpointPath)
+	var retail *retailEngine
+	if backend=="sqlite" {retail,err=openSQLiteRetailEngine(checkpointPath)} else {retail,err=openRetailEngine(checkpointPath)}
 	if err != nil {log.Fatal(err)}
 	s := &Server{retail: retail, catalog: loadCatalog(), store: store, engineURL: strings.TrimRight(env("ENGINE_URL", "http://127.0.0.1:8091"), "/"), client: &http.Client{Timeout: 800 * time.Millisecond}}
 	server := &http.Server{Addr: env("ADDR", "127.0.0.1:8090"), Handler: s.handler(env("WEB_DIR", "../../apps/kiosk/dist")), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
