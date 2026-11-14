@@ -41,6 +41,7 @@ export function RetailFinance(){
  <p><a href="#retail-twin">{lang==="tr"?"Dijital ikiz":lang==="ru"?"Цифровой двойник":"Digital twin"}</a></p>
  <p><a href="#retail-spatial">{lang==="tr"?"Teslimat rotaları":lang==="ru"?"Маршруты доставки":"Delivery route lab"}</a></p>
  <p><a href="#retail-brain">{lang==="tr"?"Karar merkezi":lang==="ru"?"Центр решений":"Decision center"}</a></p>
+ <p><a href="#retail-business">{lang==="tr"?"İşletme çalışma alanı":lang==="ru"?"Рабочее пространство":"Business workspace"}</a></p>
  {!IS_DEMO&&<button disabled={busy} onClick={()=>setVersion(x=>x+1)}>{t.refresh}</button>}
  {busy&&<p role="status">{t.loading}</p>}{error&&<p role="alert">{t.error}</p>}
  {report&&<>
