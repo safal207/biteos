@@ -55,7 +55,7 @@ func(e *retailEngine) evidenceReport(w http.ResponseWriter,r *http.Request){
 func retailRecoveryPosture(readback string) string {
 	switch readback {
 	case "ONE_EFFECT_MATCHING": return "REPORT_ONLY"
-	case "ONE_EFFECT_MISMATCHED","MULTIPLE_EFFECTS": return "BLOCKED"
+	case "ONE_EFFECT_MISMATCHED","MULTIPLE_EFFECTS","MULTIPLE_EFFECTS_MATCHING": return "BLOCKED"
 	default: return "REVALIDATE"
 	}
 }
