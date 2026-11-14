@@ -30,3 +30,27 @@ jobs:
           cp integrations/liminaldb/biteos_evidence_fixture.rs upstream-liminaldb/liminal-db/crates/liminal-store/tests/biteos_evidence_fixture.rs
           cd upstream-liminaldb
           BITEOS_EVIDENCE_FIXTURE="$RUNNER_TEMP/biteos-evidence.json" cargo test --locked -p liminal-store --test biteos_evidence_fixture -- --nocapture
+      - name: Build native offline importer
+        run: |
+          mkdir -p upstream-liminaldb/liminal-db/crates/liminal-store/examples
+          cp integrations/liminaldb/biteos_import.rs upstream-liminaldb/liminal-db/crates/liminal-store/examples/biteos_import.rs
+          cd upstream-liminaldb
+          cargo test --locked -p liminal-store --example biteos_import
+          cargo build --locked -p liminal-store --example biteos_import
+      - name: SQLite source and repeatable native WAL import
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev pkg-config
+          export CGO_ENABLED=1
+          export RETAIL_BACKEND=sqlite
+          export RETAIL_STORE="$RUNNER_TEMP/biteos-sync.db"
+          export BITEOS_SQLITE_SYNC_FILE="$RETAIL_STORE"
+          export RETAIL_EVIDENCE_STREAM=ci-store
+          export LIMINALDB_IMPORTER="$GITHUB_WORKSPACE/upstream-liminaldb/target/debug/examples/biteos_import"
+          export LIMINALDB_EVIDENCE_ROOT="$RUNNER_TEMP/biteos-native-ledger"
+          cd services/api
+          go test -race -tags sqlite -count=1 -run '^TestRetailSQLiteEvidenceSyncFixture$' ./...
+          go build -tags sqlite -o "$RUNNER_TEMP/biteos-api" .
+          "$RUNNER_TEMP/biteos-api" evidence-sync > "$RUNNER_TEMP/import-first.json"
+          "$RUNNER_TEMP/biteos-api" evidence-sync > "$RUNNER_TEMP/import-repeat.json"
+          python3 -c 'import json,sys; a,b=[json.load(open(p)) for p in sys.argv[1:]]; assert a["count"]==b["count"]==2 and a["head"]==b["head"] and a["inserted"]==2 and b["inserted"]==0 and b["replayed"]==2 and not a["externalEffectsAuthorized"] and not b["externalEffectsAuthorized"]; print("BITEOS-LIMINALDB-002: SQLite -> native WAL -> verified repeat receipt")' "$RUNNER_TEMP/import-first.json" "$RUNNER_TEMP/import-repeat.json"
