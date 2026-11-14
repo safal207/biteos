@@ -9,7 +9,7 @@ const run = (bin, args, cwd) => execFileSync(bin, args, { cwd, encoding: "utf8",
 const items = [];
 const virtualStore = join(root, "apps/kiosk/node_modules/.pnpm");
 for (const entry of readdirSync(virtualStore, { withFileTypes: true })) {
-  if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+  if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "node_modules") continue;
   const modules = join(virtualStore, entry.name, "node_modules");
   // Only physical package directories; dependency symlinks are enumerated separately.
   for (const part of readdirSync(modules, { withFileTypes: true })) {
