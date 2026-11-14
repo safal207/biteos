@@ -56,6 +56,7 @@ func validateRetailState(s retailState) error {
 	stock:=map[string]int{}
 	for _,p:=range newRetailEngine().products {stock[p.ID]=p.Stock}
 	for _,m:=range s.Movements {
+		if m.UseBy!=""&&(m.Kind!="receive"||!validLifetimeDay(m.UseBy)){return errors.New("invalid use-by metadata")}
 		if _,ok:=stock[m.ProductID]; !ok {return errors.New("unknown movement product")}
 		if (m.Kind=="receive" || m.Kind=="release") && m.Delta>0 || m.Kind=="reserve" && m.Delta<0 {
 			stock[m.ProductID]+=m.Delta
