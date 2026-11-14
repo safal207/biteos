@@ -71,6 +71,7 @@ type retailEngine struct {
 	checkpointPath string
 	sqliteSave func([]byte,retailState)error
 	storageFailed bool
+	demandSignals map[string]demandSignal
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
@@ -108,6 +109,8 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/evidence", e.evidenceReport)
 	mux.HandleFunc("/api/retail/finance", e.finance)
 	mux.HandleFunc("/api/retail/growth", e.growth)
+	mux.HandleFunc("/api/retail/demand", e.demand)
+	mux.HandleFunc("/api/retail/demand/plan", e.demandPlanning)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
