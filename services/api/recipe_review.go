@@ -3,6 +3,7 @@ package main
 import (
  "encoding/json"
  "errors"
+ "math"
  "net/http"
  "sort"
  "time"
@@ -19,8 +20,7 @@ type recipeSnapshot struct {
 func canonicalRecipeSelection(i universalQuoteInput)universalQuoteInput{
  out:=i;out.Selections=map[string][]string{}
  for group,picks:=range i.Selections{
-  if len(picks)==0{continue}
-  values:=append([]string(nil),picks...);sort.Strings(values);out.Selections[group]=values
+  values:=append([]string{},picks...);sort.Strings(values);out.Selections[group]=values
  }
  return out
 }
@@ -58,7 +58,7 @@ func validRecipeSnapshot(s recipeSnapshot,tenant string)bool{
  if s.Version!=1||!reviewHex(s.Digest)||s.Digest!=recipeSnapshotDigest(s)||!reviewHex(r.SourceDigest)||!r.Demo||!q.Demo||r.ExternalEffectsAuthorized||q.ExternalEffectsAuthorized||q.TenantID!=tenant||q.Currency!="TRY"||q.AllergenStatus!="unknown"||!validTenantID(i.ItemID)||i.ItemID!=q.ItemID||i.VariantID!=q.VariantID||i.VariantID!=""&&!validTenantID(i.VariantID)||i.Quantity<1||i.Quantity>20||q.Quantity!=i.Quantity||q.UnitPrice<1||q.UnitPrice>9700000000||q.Total!=q.UnitPrice*int64(i.Quantity)||len(r.Lines)<1||len(r.Lines)>200||len(r.Lines)!=len(q.Ingredients)||len(i.Selections)>8{return false}
  if i.Selections==nil{return false}
  for group,picks:=range i.Selections{
-  if !validTenantID(group)||len(picks)<1||len(picks)>12{return false}
+  if !validTenantID(group)||picks==nil||len(picks)>12{return false}
   for j,id:=range picks{if !validTenantID(id)||j>0&&picks[j-1]>=id{return false}}
  }
  ingredients:=map[string]bool{}
@@ -67,6 +67,7 @@ func validRecipeSnapshot(s recipeSnapshot,tenant string)bool{
  for j,l:=range r.Lines{
   if !ingredients[l.IngredientID]||j>0&&r.Lines[j-1].IngredientID>=l.IngredientID||l.Unit!="g"&&l.Unit!="ml"&&l.Unit!="piece"||l.QuantityPerItem<1||l.QuantityPerItem>97000000||l.PackQuantity<1||l.PackQuantity>1000000||l.PackCost<1||l.PackCost>100000000{return false}
   if l.CostPerItem!=ceilGrowth(l.QuantityPerItem*l.PackCost,l.PackQuantity){return false}
+  if l.CostPerItem<0||l.CostPerItem>(math.MaxInt64-direct)/int64(i.Quantity){return false}
   direct+=l.CostPerItem*int64(i.Quantity)
  }
  return r.DirectCost==direct&&r.GrossContribution==q.Total-direct
@@ -99,8 +100,6 @@ func serveRecipeReview(w http.ResponseWriter,r *http.Request,entry tenantEntry){
  if old,ok:=e.recipeReviews[id];ok{
   // A replay must retain the exact selection and outcome, not just a known digest.
   a,_:=json.Marshal(canonicalRecipeSelection(in.Selection));b,_:=json.Marshal(old.Snapshot.Selection)
-  // Empty group names cannot be erased to impersonate a previous request.
-  for group:=range in.Selection.Selections{if _,ok:=old.Snapshot.Selection.Selections[group];!ok&&len(in.Selection.Selections[group])==0{fail(w,409,"review selection conflict");return}}
   if string(a)!=string(b)||old.Outcome!=in.Outcome{fail(w,409,"review immutable");return}
   respond(w,200,map[string]any{"record":old,"current":err==nil&&current.Digest==in.Snapshot,"externalEffectsAuthorized":false});return
  }
@@ -113,4 +112,12 @@ func serveRecipeReview(w http.ResponseWriter,r *http.Request,entry tenantEntry){
  e.recipeReviews[id]=record
  if err=e.commitMutation(before);err!=nil{fail(w,503,"checkpoint unavailable");return}
  respond(w,201,map[string]any{"record":record,"current":true,"externalEffectsAuthorized":false})
+}
+
+func serveRecipeSnapshot(w http.ResponseWriter,r *http.Request,entry tenantEntry){
+ var in universalQuoteInput
+ if !retailDecode(w,r,&in){return}
+ snapshot,err:=buildRecipeSnapshot(entry.catalog,entry.recipes,in)
+ if err!=nil{fail(w,422,err.Error());return}
+ respond(w,200,snapshot)
 }
