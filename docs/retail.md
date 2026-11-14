@@ -86,6 +86,15 @@ CI builds the native executable, tests corrupted/conflicting/truncated batches a
 - `#retail-growth` is a TR/RU/EN planner linked from Finance. In Pages mode it uses a fixed local sample; in local mode it calls Go. Neither route is authenticated. Never expose the demo API publicly.
 - Tests cover margin/stock blocks, unreachable break-even, volume review, high-cost purchase lots, invalid parameters and fulfilled co-purchases. No extra software license or hosted service.
 
+## ROZAL LIFE / BiteOS Club v0.1
+
+- Four deterministic shopping goals (family breakfast, school essentials, dinner, weekly essentials) reference only existing demo SKUs. The suggestions are shopping templates, not nutritional guidance or guarantees of sufficient food for a household.
+- Anonymous browser-local saved cart and last fulfilled order list, with SKU IDs, quantities and previous unit prices only. No account, personal identifiers, remote sync, analytics tracking or rewards. Separate storage keys for static and local modes. Users can delete both lists. Do not use a shared browser for sensitive purchase history.
+- Reorder draft shows the catalog currently loaded in the UI, highlights changed prices, blocks unavailable/insufficient quantities and optional product-budget overruns, lets the user edit or explicitly remove each line, and replaces the existing cart only through an explicit action. Shipping is excluded from the draft budget. No order is created from preview. The Go checkout remains authoritative for stock and price; a price-lock/quote confirmation for changes after preview is still needed.
+- The last order is saved only after collected/delivered is returned by the local server or simulated in static mode, not on reservation/cancellation. Active orders are not recoverable through this browser list feature. If localStorage is denied, writes warn and lists may exist only for the current session.
+- TR/RU/EN responsive UI uses existing React, TypeScript, and CSS. No extra dependency. Frontend-only templates and anonymous lists are deliberate for this stage; shared Go rules and SQLite member/loyalty ledgers need auth, consent, refund/expiry rules and server-side idempotency first.
+- Node tests cover budget boundary, missing stock, changed prices and corrupt local data. Require exact-head CI and browser smoke before release. For the underlying prioritization see [world benchmark](club-world-benchmark-2026.md).
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
