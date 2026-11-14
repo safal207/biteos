@@ -92,3 +92,18 @@ func TestRetailSQLiteProcessKill(t *testing.T){
 	w:=retailCall(mux,"POST","/api/retail/orders","checkpoint-order-1",checkpointOrderBody)
 	if w.Code!=200||len(e.orders)!=1||len(e.evidence)!=1||e.products[2].Stock!=18||e.usedSlots["center-a"]!=1{t.Fatal("lost acknowledged order",w.Code)}
 }
+
+func TestRetailSQLiteEvidenceSyncFixture(t *testing.T){
+	path:=os.Getenv("BITEOS_SQLITE_SYNC_FILE")
+	if path==""{t.Skip("native bridge fixture only")}
+	e,mux:=sqliteMux(t,path)
+	checkpointCreate(t,mux)
+	w:=retailCall(mux,"POST","/api/retail/inventory","checkpoint-receipt-1",checkpointReceiptBody)
+	if w.Code!=201{t.Fatal(w.Code,w.Body.String())}
+	b,err:=e.evidenceBatch("ci-store")
+	if err!=nil||len(b.Events)!=2{t.Fatal(err)}
+	r:=evidenceImportReceipt{Schema:"biteos.evidence.receipt.v1",Stream:b.Stream,Count:2,Head:b.Events[1].Event.Digest,Inserted:2}
+	if err=verifyImportReceipt(b,r);err!=nil{t.Fatal(err)}
+	r.ExternalEffectsAuthorized=true
+	if err=verifyImportReceipt(b,r);err==nil{t.Fatal("storage receipt granted external authority")}
+}
