@@ -43,6 +43,7 @@ import {
 import { DeliveryApp } from "./DeliveryApp";
 import { RetailApp } from "./RetailApp";
 import { RetailFinance } from "./RetailFinance";
+import { RetailGrowth } from "./RetailGrowth";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -1433,6 +1434,7 @@ function BiteOS() {
   }, []);
   if (route === "#retail") return <RetailApp />;
   if (route === "#retail-finance") return <RetailFinance />;
+  if (route === "#retail-growth") return <RetailGrowth />;
   return route === "#kiosk" ? <App /> : <DeliveryApp />;
 }
 
