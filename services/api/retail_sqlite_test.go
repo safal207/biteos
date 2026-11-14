@@ -121,3 +121,17 @@ func TestRetailSQLiteDemandReplay(t *testing.T){
  e,_=sqliteMux(t,path)
  if len(e.demandSignals)!=1||len(e.orders)!=1||len(e.evidence)!=1{t.Fatal("demand/order isolation")}
 }
+
+func TestRetailSQLiteReviewReplay(t *testing.T){
+ t.Setenv("BITEOS_REVIEW_TOKEN",testReviewCredential)
+ path:=filepath.Join(t.TempDir(),"review.db")
+ _,mux:=sqliteMux(t,path)
+ b:=readBrain(t,mux)
+ body:=reviewBody(b.Snapshot,b.Decisions[0].ID,"reviewed")
+ w:=reviewCall(mux,"POST","/api/retail/brain/review",testReviewCredential,body)
+ if w.Code!=201{t.Fatal(w.Code,w.Body.String())}
+ e,mux:=sqliteMux(t,path)
+ w=reviewCall(mux,"POST","/api/retail/brain/review",testReviewCredential,body)
+ if w.Code!=200||len(e.reviews)!=1||len(e.evidence)!=0{t.Fatal("review reopen",w.Code)}
+ if readBrain(t,mux).Snapshot!=b.Snapshot{t.Fatal("review-only snapshot drift")}
+}
