@@ -1,0 +1,108 @@
+package main
+
+import (
+ "crypto/sha256"
+ "crypto/subtle"
+ "errors"
+ "fmt"
+ "net"
+ "net/http"
+ "os"
+ "path/filepath"
+ "strings"
+ "time"
+)
+
+func validTenantID(id string)bool{
+ if len(id)<1||len(id)>32{return false}
+ for i,c:=range id{
+  if c>='a'&&c<='z'||c>='0'&&c<='9'||c=='-'&&i>0&&i<len(id)-1{continue}
+  return false
+ }
+ return true
+}
+type tenantConfig struct{ID,Token string}
+type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux}
+type tenantGateway struct{entries map[string]tenantEntry}
+func validateTenantConfigs(config []tenantConfig)error{
+ if len(config)<1||len(config)>8{return errors.New("configure 1–8 tenants")}
+ ids:=map[string]bool{};keys:=map[[32]byte]bool{}
+ for _,c:=range config{
+  d:=sha256.Sum256([]byte(c.Token))
+  if !validTenantID(c.ID)||ids[c.ID]||len(c.Token)<32||len(c.Token)>256||strings.ContainsAny(c.Token," \t\r\n")||keys[d]{return errors.New("invalid tenant ID or duplicate/invalid credential")}
+  ids[c.ID]=true;keys[d]=true
+ }
+ return nil
+}
+// Separate SQLite databases and engines; no implicit tenant or legacy fallback.
+// Root is operator-controlled, not supplied by an HTTP request.
+func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
+ if err:=validateTenantConfigs(config);err!=nil{return nil,err}
+ if root==""{return nil,errors.New("explicit tenant root required")}
+ if err:=os.MkdirAll(root,0700);err!=nil{return nil,err}
+ absolute,err:=filepath.Abs(root);if err!=nil{return nil,err}
+ info,err:=os.Lstat(absolute);if err!=nil||!info.IsDir()||info.Mode()&os.ModeSymlink!=0{return nil,errors.New("tenant root must be a real directory")}
+ g:=&tenantGateway{entries:map[string]tenantEntry{}}
+ for _,c:=range config{
+  path:=filepath.Join(absolute,c.ID+".sqlite")
+  for _,name:=range []string{path,path+"-wal",path+"-shm"}{
+   f,err:=os.Lstat(name);if err==nil&&!f.Mode().IsRegular(){return nil,errors.New("tenant store must be a regular file")}
+   if err!=nil&&!errors.Is(err,os.ErrNotExist){return nil,err}
+  }
+  e,err:=openSQLiteRetailEngineForTenant(path,c.ID)
+  if err!=nil{return nil,fmt.Errorf("tenant %s: %w",c.ID,err)}
+  mux:=http.NewServeMux();e.register(mux)
+  g.entries[c.ID]=tenantEntry{sha256.Sum256([]byte("Bearer "+c.Token)),e,mux}
+ }
+ return g,nil
+}
+// All exposed endpoints require the tenant-wide operator key. Role-specific
+// legacy review/business and independent restaurant APIs are deliberately absent.
+func tenantAllowed(path,method string)bool{
+ switch path{
+ case "catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
+ case "order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
+ case "orders","demand/plan":return method=="POST"
+ }
+ return false
+}
+func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
+ w.Header().Set("Cache-Control","no-store")
+ w.Header().Set("X-Content-Type-Options","nosniff")
+ if r.URL.RawPath!=""||r.URL.EscapedPath()!=r.URL.Path||!strings.HasPrefix(r.URL.Path,"/api/tenants/"){fail(w,404,"tenant endpoint unavailable");return}
+ parts:=strings.SplitN(strings.TrimPrefix(r.URL.Path,"/api/tenants/"),"/",3)
+ if len(parts)!=3||!validTenantID(parts[0])||parts[1]!="retail"||!tenantAllowed(parts[2],r.Method){fail(w,404,"tenant endpoint unavailable");return}
+ entry,ok:=g.entries[parts[0]]
+ got:=sha256.Sum256([]byte(r.Header.Get("Authorization")))
+ if !ok||subtle.ConstantTimeCompare(entry.digest[:],got[:])!=1{fail(w,401,"tenant credential required");return}
+ // Reject tenant selection via query or header: path is authoritative.
+ if r.URL.Query().Has("tenant")||r.URL.Query().Has("tenantId")||r.Header.Get("X-Tenant-ID")!=""{fail(w,400,"tenant selection must use path only");return}
+ clone:=r.Clone(r.Context());clone.URL.Path="/api/retail/"+parts[2];clone.URL.RawPath=""
+ clone.RequestURI=clone.URL.RequestURI()
+ // Authentication already happened. Never forward operator credentials.
+ clone.Header.Del("Authorization")
+ entry.handler.ServeHTTP(w,clone)
+}
+func tenantConfigsFromEnv()([]tenantConfig,error){
+ raw:=os.Getenv("BITEOS_TENANTS")
+ configs:=[]tenantConfig{}
+ for _,id:=range strings.Split(raw,","){
+  if !validTenantID(id){return nil,errors.New("invalid BITEOS_TENANTS")}
+  name:="BITEOS_TENANT_TOKEN_"+strings.ToUpper(strings.ReplaceAll(id,"-","_"))
+  configs=append(configs,tenantConfig{id,os.Getenv(name)})
+ }
+ return configs,validateTenantConfigs(configs)
+}
+func tenantLoopback(addr string)bool{
+ host,_,err:=net.SplitHostPort(addr)
+ if err!=nil{return false}
+ ip:=net.ParseIP(host);return ip!=nil&&ip.IsLoopback()
+}
+func runTenantServer()error{
+ configs,err:=tenantConfigsFromEnv();if err!=nil{return err}
+ addr:=env("BITEOS_TENANT_ADDR","127.0.0.1:8092")
+ if !tenantLoopback(addr){return errors.New("tenant demo requires literal loopback address")}
+ g,err:=openTenantGateway(os.Getenv("BITEOS_TENANT_ROOT"),configs);if err!=nil{return err}
+ server:=&http.Server{Addr:addr,Handler:g,ReadHeaderTimeout:5*time.Second,ReadTimeout:10*time.Second,WriteTimeout:10*time.Second,IdleTimeout:60*time.Second}
+ return server.ListenAndServe()
+}
