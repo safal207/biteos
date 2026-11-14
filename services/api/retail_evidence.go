@@ -46,8 +46,10 @@ func(e *retailEngine) evidenceReport(w http.ResponseWriter,r *http.Request){
 	if !method(w,r,"GET"){return}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	storage:="memory"
 	if e.checkpointPath!="" {storage="local-checkpoint"}
+	if e.sqliteSave!=nil {storage="sqlite-wal"}
 	events:=e.evidence
 	if len(events)>100 {events=events[len(events)-100:]}
 	respond(w,200,map[string]any{"demo":true,"durable":false,"storage":storage,"externalAcknowledged":false,"events":events})
