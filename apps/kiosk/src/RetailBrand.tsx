@@ -25,6 +25,7 @@ export function RetailBrand(){
  const categories=draft.kind==="coffee"?t.coffee:t.grocery;
  return <main className="retail brand-studio"><header><a href="#retail-business">← BiteOS</a><strong>BRAND STUDIO</strong><select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)}>{languages.map(l=><option key={l} value={l}>{l.toUpperCase()}</option>)}</select></header>
  <section className="retail-hero"><h1>{t.title}</h1><p>{t.note}</p></section>
+ <p><a href="#retail-catalog-studio">{lang==="tr"?"Evrensel katalog":lang==="ru"?"Универсальный каталог":"Universal catalog"}</a></p>
  <div className="brand-layout"><section className="retail-cart"><label>{t.preset}<select value={draft.tenantId} onChange={e=>setDraft(profile(e.target.value))}>{presets.map(p=><option key={p.tenantId} value={p.tenantId}>{p.name}</option>)}</select></label><label>{t.name}<input value={draft.name} maxLength={96} onChange={e=>setDraft(p=>({...p,name:e.target.value}))}/></label>
  {languages.map(l=><label key={l}>{t.headline} · {l.toUpperCase()}<input value={draft.headline[l]} maxLength={240} onChange={e=>setDraft(p=>({...p,headline:{...p.headline,[l]:e.target.value}}))}/></label>)}
  <div className="brand-colors">{(["accent","surface","ink"] as const).map(k=><label key={k}>{t[k]}<input type="color" value={draft[k]} onChange={e=>setDraft(p=>({...p,[k]:e.target.value}))}/><small>{draft[k]}</small></label>)}</div>
