@@ -49,6 +49,7 @@ import { RetailLifetime } from "./RetailLifetime";
 import { RetailTwin } from "./RetailTwin";
 import { RetailSpatial } from "./RetailSpatial";
 import { RetailBrain } from "./RetailBrain";
+import { RetailBusiness } from "./RetailBusiness";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -1446,6 +1447,7 @@ function BiteOS() {
   if (route === "#retail-twin") return <RetailTwin />;
   if (route === "#retail-spatial") return <RetailSpatial />;
   if (route === "#retail-brain") return <RetailBrain />;
+  if (route === "#retail-business") return <RetailBusiness />;
   return route === "#kiosk" ? <App /> : <DeliveryApp />;
 }
 
