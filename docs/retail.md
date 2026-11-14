@@ -45,9 +45,28 @@ CGO_ENABLED=1 RETAIL_BACKEND=sqlite RETAIL_STORE=data/retail.db go run -tags sql
 
 Do not switch an existing store silently: there is no JSON migration yet. Use separate paths and backups. An existing empty, corrupt or inconsistent SQLite database fails startup. SQLite WAL mode and synchronous FULL are required/configured. SQLite stores the complete checksummed state as one blob; each newly accepted evidence event is inserted into a separate append-only-by-application outbox table in the same transaction. The update compares the previous digest to reject stale writers; a failed transaction rolls back and latches the engine unavailable until reopened. The operating model remains one process per store; stale readers in other processes are not prevented.
 
-The outbox currently retains all events as pending; there is no worker, delivery acknowledgement, external payment confirmation or runtime LiminalDB adapter. On reopen, order/inventory/slot constraints and the entire outbox are reconciled with the state. Read-only evidence endpoint reports storage=sqlite-wal but does not claim external durability. Tests exercise reopen, idempotency, an injected trigger that aborts an outbox insert, stale writer, missing evidence and process kill after acknowledgement. No new production or host-power-loss guarantees are established.
+The outbox retains all events; there is no online worker or persisted delivery watermark. The optional offline import command below verifies a native WAL storage receipt. It cannot confirm external payments or dispatch. On reopen, order/inventory/slot constraints and the entire outbox are reconciled with the state. Read-only evidence endpoint reports storage=sqlite-wal but does not claim external durability. Tests exercise reopen, idempotency, an injected trigger that aborts an outbox insert, stale writer, missing evidence and process kill after acknowledgement. No new production or host-power-loss guarantees are established.
 
 Run `CGO_ENABLED=1 go test -race -tags sqlite ./...` locally or see Check BiteOS CI. The optional build uses the locally packaged SQLite library (see distribution security updates / license notice); Windows/other packaging and relational table normalization are future work. No user data or public deployment.
+
+## BITEOS-LIMINALDB-002 — offline native WAL bridge
+
+Build the importer from the pinned LiminalDB checkout (commit 61b02fc81e0cb5cf1f1ed4658ecff58f683cb728). Place integrations/liminaldb/biteos_import.rs in the checkout's liminal-db/crates/liminal-store/examples/ and run cargo build --locked -p liminal-store --example biteos_import. Then stop the BiteOS server and use the SQLite-enabled Go binary:
+
+```sh
+RETAIL_BACKEND=sqlite \
+RETAIL_STORE=/absolute/path/retail.db \
+RETAIL_EVIDENCE_STREAM=store-demo-1 \
+LIMINALDB_IMPORTER=/absolute/path/target/debug/examples/biteos_import \
+LIMINALDB_EVIDENCE_ROOT=/absolute/path/liminal-evidence \
+./biteos-api evidence-sync
+```
+
+Use a stable, operator-assigned stream name unique to the source database, a trusted pinned executable and a dedicated destination. Do not run multiple live source writers or share the native ledger directory with other profiles. The command imports the full validated source prefix from the existing SQLite store, through stdin, with no external network service. The importer validates event identity, sequence, canonical digest and hash links, opens LiminalDB's native Store (writer lock and synchronized append), checks the entire stored prefix, appends only the missing suffix, and returns the count/head digest and inserted/replayed counts. The Go command checks these values before reporting success. A conflicting or truncated source prefix fails closed. Partial append followed by retry is supported by prefix reconciliation; process-kill evidence for the bridge itself is not yet established.
+
+No event deletion or delivery watermark; every invocation rereads the full bounded history. Receipt verification trusts the operator-selected executable; this is not a signed receipt, not a cross-database atomic commit, not a distributed exactly-once guarantee and not a proof of payment or delivery. The importer uses a dedicated native WAL profile for internal claims, not TrustworthyTransitionLedger authorization records. The separate BITEOS-LIMINALDB-001 fixture demonstrates the conservative continuity mapping. No automatic external-effect authority, no live API integration, no new paid dependency.
+
+CI builds the native executable, tests corrupted/conflicting/truncated batches and actual SQLite-to-WAL replay twice, comparing the receipt. Claims about successful execution require the exact-head CI result.
 
 ## Verification
 
