@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),18);
+  assert.equal(await links.count(),19);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),18);
+  assert.equal(await links.count(),19);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -95,8 +95,14 @@ try{
   assert.ok((await page.getByLabel("Campaign link").inputValue()).includes("utm_source=table_qr"));
   assert.equal(await page.locator("input[type=file]").count(),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"campaign studio overflow");
+  await page.goto(base+"#retail-robys-loyalty");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Roby’s loyalty intelligence"}).waitFor();
+  assert.equal(await page.locator("input[type=file]").count(),0);
+  assert.ok(await page.getByText("Illustrative data only.",{exact:true}).isVisible());
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"loyalty dashboard overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 18 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 19 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}
