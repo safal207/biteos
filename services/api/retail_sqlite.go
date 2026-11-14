@@ -69,7 +69,9 @@ CREATE TABLE retail_state (id INTEGER PRIMARY KEY CHECK(id=1), schema_version IN
 CREATE TABLE retail_outbox (seq INTEGER PRIMARY KEY CHECK(seq>0), event_id BLOB NOT NULL UNIQUE, digest BLOB NOT NULL, payload BLOB NOT NULL);
 `
 
-func openSQLiteRetailEngine(path string)(*retailEngine,error){
+func openSQLiteRetailEngine(path string)(*retailEngine,error){return openSQLiteRetailEngineForTenant(path,"")}
+func openSQLiteRetailEngineForTenant(path,tenant string)(*retailEngine,error){
+	if tenant!=""&&!validTenantID(tenant){return nil,errors.New("invalid tenant binding")}
 	if path=="" {return nil,errors.New("explicit RETAIL_STORE required for SQLite")}
 	if err:=os.MkdirAll(filepath.Dir(path),0700);err!=nil{return nil,err}
 	f,err:=os.OpenFile(path,os.O_CREATE|os.O_EXCL|os.O_WRONLY,0600)
@@ -86,6 +88,7 @@ func openSQLiteRetailEngine(path string)(*retailEngine,error){
 	if err=c.exec("BEGIN IMMEDIATE");err!=nil{return nil,err}
 	defer c.exec("ROLLBACK")
 	e:=newRetailEngine()
+	e.tenantID=tenant
 	if fresh{
 		if err=c.exec(retailSQLSchema);err!=nil{return nil,err}
 		raw,err:=json.Marshal(e.state());if err!=nil{return nil,err}
@@ -103,6 +106,7 @@ func openSQLiteRetailEngine(path string)(*retailEngine,error){
 	var state retailState
 	if err=json.Unmarshal(raw,&state);err!=nil{return nil,err}
 	if err=validateRetailState(state);err!=nil{return nil,err}
+	if state.TenantID!=tenant{return nil,errors.New("SQLite tenant binding mismatch")}
 	i:=0
 	if err=c.query("SELECT seq,event_id,digest,payload FROM retail_outbox ORDER BY seq",func(s *C.sqlite3_stmt)error{
 		if i>=len(state.Evidence){return errors.New("unexpected outbox event")}
@@ -121,6 +125,7 @@ func openSQLiteRetailEngine(path string)(*retailEngine,error){
 	priorDigest:=checkpointDigest(raw)
 	e.sqliteSave=func(before []byte,next retailState)error{
 		if err:=validateRetailState(next);err!=nil{return err}
+		if next.TenantID!=tenant{return errors.New("tenant binding changed")}
 		var previous retailState
 		if err:=json.Unmarshal(before,&previous);err!=nil{return err}
 		if len(next.Evidence)<len(previous.Evidence){return errors.New("outbox truncation")}
