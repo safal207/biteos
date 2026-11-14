@@ -1,0 +1,32 @@
+name: BiteOS LiminalDB evidence compatibility
+on:
+  pull_request:
+  push:
+permissions:
+  contents: read
+jobs:
+  native-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: false
+      - uses: dtolnay/rust-toolchain@1.93.0
+      - name: Generate actual BiteOS demo claim
+        working-directory: services/api
+        run: |
+          BITEOS_EVIDENCE_FIXTURE="$RUNNER_TEMP/biteos-evidence.json" go test -race -count=1 -run 'TestRetailEvidenceSequenceAndReplay|TestRetailRecoveryConservative' ./...
+      - uses: actions/checkout@v4
+        with:
+          repository: safal207/LiminalDB
+          ref: 61b02fc81e0cb5cf1f1ed4658ecff58f683cb728
+          path: upstream-liminaldb
+          persist-credentials: false
+      - name: Replay with the native pinned ledger
+        run: |
+          cp integrations/liminaldb/biteos_evidence_fixture.rs upstream-liminaldb/liminal-db/crates/liminal-store/tests/biteos_evidence_fixture.rs
+          cd upstream-liminaldb
+          BITEOS_EVIDENCE_FIXTURE="$RUNNER_TEMP/biteos-evidence.json" cargo test --locked -p liminal-store --test biteos_evidence_fixture -- --nocapture
