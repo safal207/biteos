@@ -269,6 +269,7 @@ func decode(w http.ResponseWriter, r *http.Request, b *Basket) bool {
 }
 func (s *Server) handler(webDir string) http.Handler {
 	mux := http.NewServeMux()
+	newRetailEngine().register(mux)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		if method(w, r, "GET") {
 			respond(w, 200, map[string]string{"status": "ok", "service": "biteos-api"})
