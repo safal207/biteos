@@ -18,3 +18,10 @@
 .club-actions{display:flex;gap:8px;flex-wrap:wrap}
 .retail .club-actions button:first-child{background:#b3263b;color:#fff;border-color:#b3263b}
 @media(max-width:620px){.club-goals{grid-template-columns:repeat(2,minmax(0,1fr))}.retail .club-panel{padding:12px}.club-line{grid-template-columns:minmax(0,1fr) 72px}.club-line>button{grid-column:2;justify-self:end}.club-lists>button{flex:1 1 130px}}
+
+.club-context{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}
+.club-context label{display:flex;flex-direction:column;gap:5px;font-size:.8rem;font-weight:600;min-width:0}
+.club-context select,.club-context input{width:100%;min-width:0}
+.club-goals small{font-size:.73rem;line-height:1.3}
+.club-ready{color:#246747;font-weight:700}
+@media(max-width:620px){.club-context{grid-template-columns:repeat(2,minmax(0,1fr))}.club-context label:last-child{grid-column:1/-1}}
