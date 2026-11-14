@@ -54,6 +54,7 @@ import { RetailBrand } from "./RetailBrand";
 import { RetailUniversalCatalog } from "./RetailUniversalCatalog";
 import { RetailEconomics } from "./RetailEconomics";
 import { RetailObservatory } from "./RetailObservatory";
+import { RetailWorkspace } from "./RetailWorkspace";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -1442,20 +1443,21 @@ function BiteOS() {
     window.addEventListener("hashchange", onRoute);
     return () => window.removeEventListener("hashchange", onRoute);
   }, []);
+  if (route === "#workspace") return <RetailWorkspace />;
   if (route === "#retail") return <RetailApp />;
-  if (route === "#retail-finance") return <RetailFinance />;
-  if (route === "#retail-growth") return <RetailGrowth />;
-  if (route === "#retail-demand") return <RetailDemand key="customer" />;
-  if (route === "#retail-demand-business") return <RetailDemand key="owner" owner />;
-  if (route === "#retail-lifetime") return <RetailLifetime />;
-  if (route === "#retail-twin") return <RetailTwin />;
-  if (route === "#retail-spatial") return <RetailSpatial />;
-  if (route === "#retail-brain") return <RetailBrain />;
-  if (route === "#retail-business") return <RetailBusiness />;
-  if (route === "#retail-brand") return <RetailBrand />;
-  if (route === "#retail-catalog-studio") return <RetailUniversalCatalog />;
-  if (route === "#retail-economics") return <RetailEconomics />;
-  if (route === "#retail-observatory") return <RetailObservatory />;
+  if (route === "#retail-finance") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailFinance /></>;
+  if (route === "#retail-growth") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailGrowth /></>;
+  if (route === "#retail-demand") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailDemand key="customer" /></>;
+  if (route === "#retail-demand-business") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailDemand key="owner" owner /></>;
+  if (route === "#retail-lifetime") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailLifetime /></>;
+  if (route === "#retail-twin") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailTwin /></>;
+  if (route === "#retail-spatial") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailSpatial /></>;
+  if (route === "#retail-brain") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailBrain /></>;
+  if (route === "#retail-business") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailBusiness /></>;
+  if (route === "#retail-brand") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailBrand /></>;
+  if (route === "#retail-catalog-studio") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailUniversalCatalog /></>;
+  if (route === "#retail-economics") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailEconomics /></>;
+  if (route === "#retail-observatory") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailObservatory /></>;
   return route === "#kiosk" ? <App /> : <DeliveryApp />;
 }
 
