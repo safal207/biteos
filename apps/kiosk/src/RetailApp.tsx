@@ -138,7 +138,7 @@ export function RetailApp(){
     <section className="retail-hero"><p>GAZİPAŞA · CONCEPT</p><h1>{t.title}</h1><p>{t.demo}</p></section>
     {error&&<p role="alert">{t.error}</p>}
     {order?<section className="retail-cart"><h2>{t.order} · {order.id.slice(-8)}</h2><h3>{money(order.total)}</h3><ol>{order.events.map((ev,i)=><li key={i}>{track[ev.status]?.[lang]||ev.status}</li>)}</ol>{next&&<button disabled={busy} onClick={()=>void advance(next)}>{t.next}</button>}{canCancel&&<button disabled={busy} onClick={()=>void advance("cancelled")}>{t.cancel}</button>}{!next&&!canCancel&&<button onClick={()=>{setOrder(null);setReserved([]);}}>{t.repeat}</button>}</section>:<>
-    <p><a href="#retail-demand">{lang==="tr"?"Eksik ürün isteyin":lang==="ru"?"Предложить товар для ассортимента":"Request a missing product"}</a></p>
+    {!items.length&&<p><a href="#retail-demand">{lang==="tr"?"Eksik ürün isteyin":lang==="ru"?"Предложить товар для ассортимента":"Request a missing product"}</a></p>}
     <RetailClubPanel lang={lang} products={products} cart={cart} saved={savedList} last={lastList} busy={busy} storageError={storageError} onSave={list=>saveClub("saved",list)} onClear={clearClub} onApply={next=>{if(pending.current)return;key.current="";setCart(next)}}/>
     <input className="retail-search" aria-label={t.search} placeholder={t.search} value={query} onChange={e=>setQuery(e.target.value)}/>
     <nav aria-label="Categories">{(["all","fresh","dairy","pantry","international"] as const).map(c=><button key={c} aria-pressed={category===c} onClick={()=>setCategory(c)}>{t[c]}</button>)}</nav>
