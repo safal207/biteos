@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"crypto/sha256"
 	"net/http"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -94,6 +95,7 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 			e.products[i].Stock+=req.Quantity
 			m:=e.recordMovement(p.ID,"receive",req.Quantity,req.Reference,req.UnitCost)
 			e.receipts[key]=retailReceipt{hash,m}
+			e.emitEvidence(fmt.Sprintf("receipt-%d",len(e.receipts)),"inventory","received",1)
 			respond(w,201,m);return
 		}
 	}
