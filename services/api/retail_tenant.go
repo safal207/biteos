@@ -64,8 +64,8 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
 func tenantAllowed(path,method string)bool{
  switch path{
  case "brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
- case "recipe-cost","universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
- case "orders","demand/plan":return method=="POST"
+ case "recipe-cost/review","recipe-cost","universal-catalog","order","inventory","growth","demand","twin","spatial":return method=="GET"||method=="POST"
+ case "recipe-cost/snapshot","orders","demand/plan":return method=="POST"
  }
  return false
 }
@@ -83,6 +83,8 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  if parts[2]=="brand"{respond(w,200,entry.brand);return}
  if parts[2]=="universal-catalog"{serveUniversal(w,r,entry.catalog);return}
  if parts[2]=="recipe-cost"{serveRecipe(w,r,entry.catalog,entry.recipes);return}
+ if parts[2]=="recipe-cost/snapshot"{serveRecipeSnapshot(w,r,entry);return}
+ if parts[2]=="recipe-cost/review"{serveRecipeReview(w,r,entry);return}
  clone:=r.Clone(r.Context());clone.URL.Path="/api/retail/"+parts[2];clone.URL.RawPath=""
  clone.RequestURI=clone.URL.RequestURI()
  // Authentication already happened. Never forward operator credentials.
