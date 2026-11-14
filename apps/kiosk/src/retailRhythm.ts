@@ -1,5 +1,5 @@
-import { parseClubList } from "./retailClub";
-import type { ClubList } from "./retailClub";
+import { parseClubList } from "./retailClub.ts";
+import type { ClubList } from "./retailClub.ts";
 
 export type RhythmPlan={list:ClubList;intervalDays:number;nextDate:string};
 export type Preferences={favorite:string|null;rhythm:RhythmPlan|null};
