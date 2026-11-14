@@ -37,6 +37,7 @@ func(e *retailEngine) delivery(w http.ResponseWriter,r *http.Request){
 	if !method(w,r,"GET"){return}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	zones:=retailZones()
 	for i:=range zones{for j:=range zones[i].Slots{s:=&zones[i].Slots[j];s.Remaining=s.Capacity-e.usedSlots[s.ID]}}
 	respond(w,200,map[string]any{"demo":true,"currency":"TRY","zones":zones})
@@ -70,6 +71,7 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 	if r.Method=="GET"{
 		e.mu.Lock()
 		defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 		movements:=e.movements
 		if len(movements)>100 {movements=movements[len(movements)-100:]}
 		respond(w,200,map[string]any{"demo":true,"products":e.products,"movements":movements})
@@ -84,6 +86,7 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 	hash:=sha256.Sum256(data)
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.storageFailed {fail(w,503,"storage recovery required");return}
 	if old,ok:=e.receipts[key];ok{
 		if old.Hash!=hash{fail(w,409,"receipt key conflict");return}
 		respond(w,200,old.Movement);return
