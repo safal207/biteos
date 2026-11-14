@@ -68,6 +68,16 @@ No event deletion or delivery watermark; every invocation rereads the full bound
 
 CI builds the native executable, tests corrupted/conflicting/truncated batches and actual SQLite-to-WAL replay twice, comparing the receipt. Claims about successful execution require the exact-head CI result.
 
+## BiteOS Finance v0.1 — read-only demo
+
+- GET /api/retail/finance returns a deterministic full-history projection of the local demo engine, with integer TRY minor-unit arithmetic.
+- Opening stock uses fixed illustrative unit costs. Subsequent purchase lots use recorded receiving costs. FIFO allocation occurs at reservation; cancellation restores the original lots; later purchases at different costs do not rewrite prior allocations.
+- Only delivered/collected orders contribute product revenue and COGS. Gross profit = revenue - COGS; estimated contribution = gross profit + delivery fees - sample courier cost (center 45 TRY, outer 80 TRY). Open and cancelled orders are reported separately.
+- Available and reserved inventory value are distinct; margins use product revenue as denominator. Inconsistent order totals, allocations or inventory fail the finance projection closed.
+- `#retail-finance` is a separate tr/ru/en manager demonstration. GitHub Pages shows a fixed illustrative subset, not live store figures or the customer's in-tab basket. The local Go UI reads the finance endpoint. This route is not authentication: the local demo must not be exposed publicly.
+- No tax calculation, actual payments, refund recognition, shrinkage, overhead, accounting/financial reporting, actual courier invoices, campaign attribution or period filters. Do not label contribution as net profit. No DuckDB or new dependencies are required for this bounded report.
+- Tests cover exclusion of open/cancelled orders, repeated completion, FIFO allocation after price changes and cancellation, delivery contribution and inconsistent totals. Exact-head CI and browser verification remain required.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
