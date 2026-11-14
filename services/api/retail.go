@@ -73,6 +73,7 @@ type retailEngine struct {
 	storageFailed bool
 	demandSignals map[string]demandSignal
 	reviews map[string]reviewRecord
+	tenantID string
 }
 func newRetailEngine() *retailEngine {
 	return &retailEngine{
