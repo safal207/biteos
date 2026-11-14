@@ -111,6 +111,7 @@ func (e *retailEngine) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/retail/growth", e.growth)
 	mux.HandleFunc("/api/retail/demand", e.demand)
 	mux.HandleFunc("/api/retail/demand/plan", e.demandPlanning)
+	mux.HandleFunc("/api/retail/lifetime", e.lifetime)
 }
 func (e *retailEngine) catalog(w http.ResponseWriter, r *http.Request) {
 	if !method(w,r,"GET") { return }
@@ -138,6 +139,9 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 	if len(req.Items)==0 || len(req.Items)>50 || (req.Mode!="pickup" && req.Mode!="delivery") || (req.Replacement!="contact" && req.Replacement!="skip") {
 		fail(w,422,"invalid order"); return
 	}
+	f,err:=e.financeProjection()
+	if err!=nil{fail(w,503,"inventory reconciliation unavailable");return}
+	today:=lifetimeToday(time.Now())
 	seen := make(map[string]bool)
 	o := retailOrder{Mode:req.Mode,Replacement:req.Replacement,Currency:"TRY",Status:"reserved"}
 	indexes := make([]int,0,len(req.Items))
@@ -149,6 +153,7 @@ func (e *retailEngine) create(w http.ResponseWriter, r *http.Request) {
 		if index<0 { fail(w,422,"unknown item"); return }
 		p := e.products[index]
 		if p.Stock<item.Quantity { fail(w,409,"insufficient stock"); return }
+		if !lifetimeCanReserve(f.availableLots[p.ID],item.Quantity,today){fail(w,409,"dated lot requires review");return}
 		indexes=append(indexes,index)
 		o.Lines=append(o.Lines,retailLine{p.ID,p.Name,item.Quantity,p.Price})
 		o.Subtotal+=p.Price*int64(item.Quantity)
@@ -193,6 +198,10 @@ func (e *retailEngine) order(w http.ResponseWriter,r *http.Request) {
 	if o.Mode=="delivery" {next["packed"]="in_transit";next["in_transit"]="delivered"} else { next["packed"]="collected" }
 	cancel:=action.Status=="cancelled" && (o.Status=="reserved" || o.Status=="picking" || o.Status=="packed")
 	if !cancel && (next[o.Status]=="" || next[o.Status]!=action.Status) { fail(w,409,"invalid transition"); return }
+	if !cancel {
+		f,err:=e.financeProjection();if err!=nil{fail(w,503,"inventory reconciliation unavailable");return}
+		if d:=f.orderUseBy[o.ID];d!=""&&lifetimeStatus(d,lifetimeToday(time.Now()))=="HOLD"{fail(w,409,"reserved dated lot requires review");return}
+	}
 	before,err:=e.beforeMutation()
 	if err!=nil {fail(w,503,"checkpoint unavailable");return}
 	if cancel {
