@@ -169,6 +169,27 @@ TR/RU/EN #retail-business linked from Finance. Pages mode uses fixed illustrativ
 
 Next: authenticated individual staff and store tenant, default-deny middleware for every business endpoint, permission/action matrix including order ownership, audited transitions, dated shifts, receiving and picking verification, negative authorization tests. Only then consider a real merchant pilot.
 
+## Multi-Tenant Engine v0.1 — isolated local retail sandboxes
+
+Opt-in, standalone API listener. It does not serve the existing restaurant, kiosk, unscoped retail or staff/review API; no fallback or default tenant. Each provisioned tenant has a separate in-memory engine, SQLite WAL database and outbox, with its tenant ID persisted in checksummed state on creation. Legacy databases (including existing Rozal demo data) are never silently adopted. Opening a database with another tenant ID, or opening a tenant-bound database with the legacy SQLite entrypoint, fails. No migration, real merchant data, or cross-store transfer.
+
+Local example (Bash; use independently generated credentials, not production secrets):
+
+```sh
+cd services/api
+export BITEOS_TENANTS=rozal,robys
+export BITEOS_TENANT_ROOT="$PWD/data/tenant-sandboxes"
+export BITEOS_TENANT_TOKEN_ROZAL="$(openssl rand -hex 32)"
+export BITEOS_TENANT_TOKEN_ROBYS="$(openssl rand -hex 32)"
+CGO_ENABLED=1 go run -tags sqlite . tenant-serve
+```
+
+From a client holding the corresponding credential, GET http://127.0.0.1:8092/api/tenants/rozal/retail/catalog with Authorization: Bearer <Rozal tenant secret>. Every allowed request requires the path tenant's distinct key. The key is tenant-wide operator access, not an individual role or public customer login. Unknown tenants/incorrect keys are denied. Strict path allowlist prevents legacy routing and path traversal; tenant selection overrides in the tenant/tenantId query or X-Tenant-ID header are rejected. No cookie-based state, browser switching, cross-tenant analytics or authentication of individual employees. Up to eight explicitly configured tenants, lowercase IDs, separate privileged operator secrets. Root is operator-controlled and must not be writable by untrusted users; checks reject direct symlink/nonregular database paths but do not provide OS-level isolation from privileged filesystem access. Run on a trusted local machine, without a reverse proxy or public port; listener accepts only literal loopback addresses.
+
+Each sandbox currently uses the same fictional retail seed catalog, cost rules and fulfillment model; the robys name is a second isolation fixture, NOT a migrated restaurant or coffee-shop tenant. No brand-specific schemas or menu data. Orders, stock, slots, replay keys, demand signals and commerce outbox are independent. Review/business API uses legacy credentials and is excluded until tenant-scoped staff identities exist. Existing standalone evidence-sync refuses tenant stores: tenant-specific LiminalDB stream identity and import orchestration are pending. This avoids mixing evidence streams.
+
+Tests: independent same-key orders, mismatched credential and foreign order ID rejection, separate stock/receipts/demand/evidence after SQLite reopen, wrong tenant/legacy binding and direct symlink rejection, path denylist cases, duplicate configuration, loopback restriction. No frontend route or deployment is changed. No new dependency. Exact-head CI required. Next: tenant-bound individual staff roles, per-tenant catalog configurations and UI/storage namespacing, explicit backup/restore with tenant identity, tenant-scoped evidence stream and deployment-level isolation audit.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
