@@ -123,7 +123,7 @@ try{
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"context studio overflow");
   await page.goto(base+"?robysMood=study#retail-robys-experience");
   await page.getByLabel("Language").selectOption("en");
-  await page.getByRole("heading",{name:"My Roby’s"}).waitFor();
+  await page.getByRole("heading",{name:"My Roby’s",level:1,exact:true}).waitFor();
   assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"study");
   await page.getByRole("button",{name:"Friends",exact:true}).click();
   assert.equal(await page.locator("[data-robys-mood]").getAttribute("data-robys-mood"),"friends");
