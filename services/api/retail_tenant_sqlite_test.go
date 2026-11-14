@@ -79,3 +79,16 @@ func TestTenantBrandEndpoint(t *testing.T){
   if w=tenantCall(g,"POST",path,c.Token,"","{}");w.Code!=404{t.Fatal(w.Code)}
  }
 }
+
+func TestTenantUniversalCatalogBoundary(t *testing.T){
+ config:=tenantFixture();g,err:=openTenantGateway(t.TempDir(),config);if err!=nil{t.Fatal(err)}
+ a,b:="/api/tenants/rozal/retail/universal-catalog","/api/tenants/robys/retail/universal-catalog"
+ before,_:=json.Marshal(g.entries["robys"].engine.state())
+ body:=`{"itemId":"latte","variantId":"large","quantity":2,"selections":{"extras":["extra-shot","oat-drink"]}}`
+ w:=tenantCall(g,"POST",b,config[1].Token,"",body)
+ var q universalQuote
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&q)!=nil||q.Total!=29000||q.TenantID!="robys"||q.ExternalEffectsAuthorized{t.Fatal(w.Code,w.Body.String())}
+ if w=tenantCall(g,"POST",a,config[0].Token,"",body);w.Code!=422{t.Fatal("foreign item",w.Code)}
+ if w=tenantCall(g,"GET",b,config[0].Token,"","");w.Code!=401{t.Fatal("foreign key",w.Code)}
+ after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("quote mutated state")}
+}
