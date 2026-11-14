@@ -129,6 +129,8 @@ func openSQLiteRetailEngineForTenant(path,tenant string)(*retailEngine,error){
 		var previous retailState
 		if err:=json.Unmarshal(before,&previous);err!=nil{return err}
 		for id,v:=range previous.RecipeReviews{if n,ok:=next.RecipeReviews[id];!ok||n.Digest!=v.Digest{return errors.New("recipe review history changed")}}
+		for id,v:=range previous.ObservationPlans{if n,ok:=next.ObservationPlans[id];!ok||n.Digest!=v.Digest{return errors.New("observation plan history changed")}}
+		for id,v:=range previous.ObservationResults{if n,ok:=next.ObservationResults[id];!ok||n.Digest!=v.Digest{return errors.New("observation result history changed")}}
 		if len(next.Evidence)<len(previous.Evidence){return errors.New("outbox truncation")}
 		for i,v:=range previous.Evidence{if next.Evidence[i].Digest!=v.Digest{return errors.New("outbox history changed")}}
 		raw,err:=json.Marshal(next);if err!=nil{return err}
