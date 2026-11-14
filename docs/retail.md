@@ -78,6 +78,14 @@ CI builds the native executable, tests corrupted/conflicting/truncated batches a
 - No tax calculation, actual payments, refund recognition, shrinkage, overhead, accounting/financial reporting, actual courier invoices, campaign attribution or period filters. Do not label contribution as net profit. No DuckDB or new dependencies are required for this bounded report.
 - Tests cover exclusion of open/cancelled orders, repeated completion, FIFO allocation after price changes and cancellation, delivery contribution and inconsistent totals. Exact-head CI and browser verification remain required.
 
+## BiteOS Growth v0.1 — promotion scenario planning
+
+- GET /api/retail/growth returns products, current available stock, maximum available lot unit cost reconstructed from Finance FIFO, and unordered item pairs observed together in at least two fulfilled orders. Counts are descriptive; they do not measure causal lift, conversion or repeat-customer retention. No customer identities are stored.
+- POST /api/retail/growth accepts productId, discountBps, minMarginBps, baselineUnits, expectedUnits and campaignCost (TRY minor units). It computes rounded-down sale price, minimum price rounded up to preserve a requested gross margin, maximum discount at that floor, normal and proposed profit, incremental contribution after campaign expense, required units and a decision classification. No order, inventory, campaign, price or evidence state is changed.
+- Cost uses the highest currently available lot cost, a conservative scenario assumption for both baseline and promotion. Opening costs remain illustrative. Expected volume is user input, not a prediction. Stock is a point-in-time bound, not a reservation. No approval/execution authority is implied by SCENARIO_VIABLE; actual promotions need fresh checkout-time validation, authorization, attribution and financial review.
+- `#retail-growth` is a TR/RU/EN planner linked from Finance. In Pages mode it uses a fixed local sample; in local mode it calls Go. Neither route is authenticated. Never expose the demo API publicly.
+- Tests cover margin/stock blocks, unreachable break-even, volume review, high-cost purchase lots, invalid parameters and fulfilled co-purchases. No extra software license or hosted service.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
