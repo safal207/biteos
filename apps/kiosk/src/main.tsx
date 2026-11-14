@@ -55,6 +55,7 @@ import { RetailUniversalCatalog } from "./RetailUniversalCatalog";
 import { RetailEconomics } from "./RetailEconomics";
 import { RetailObservatory } from "./RetailObservatory";
 import { RetailDecisionStudio } from "./RetailDecisionStudio";
+import { RobysGrowthDashboard } from "./RobysGrowthDashboard";
 import { RetailWorkspace } from "./RetailWorkspace";
 import "@fontsource-variable/manrope";
 import "./styles.css";
@@ -1458,6 +1459,7 @@ function BiteOS() {
   if (route === "#retail-brand") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailBrand /></>;
   if (route === "#retail-catalog-studio") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailUniversalCatalog /></>;
   if (route === "#retail-economics") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailEconomics /></>;
+  if (route === "#retail-robys-growth") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysGrowthDashboard /></>;
   if (route === "#retail-decision-studio") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailDecisionStudio /></>;
   if (route === "#retail-observatory") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailObservatory /></>;
   return route === "#kiosk" ? <App /> : <DeliveryApp />;

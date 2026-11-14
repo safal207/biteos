@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),16);
+  assert.equal(await links.count(),17);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),16);
+  assert.equal(await links.count(),17);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -72,8 +72,16 @@ try{
   await page.locator("[data-decision-row]").last().waitFor();
   assert.equal(await page.locator("[data-decision-row]").count(),4);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"decision studio horizontal overflow");
+  await page.goto(base+"#retail-robys-growth");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Roby’s growth dashboard"}).waitFor();
+  assert.ok(await page.getByText("Illustrative data — not café statistics.",{exact:true}).isVisible());
+  assert.equal(await page.locator("input[type=file]").count(),0);
+  await page.getByLabel("Rank products by").selectOption("cartAddSessions");
+  assert.equal(await page.locator("[data-growth-product]").first().getAttribute("data-growth-product"),"desserts:san-sebastian-cheesecake");
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"growth dashboard overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 16 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 17 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}

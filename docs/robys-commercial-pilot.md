@@ -30,3 +30,7 @@ Weekly one-page business summary: channel quality, product funnel, hour patterns
 
 ## Community loop
 Story → question → authentic visitor reply → feedback → approved campaign announcement and rules → participation → consented photos/results → referral and repeat-visit measurement → learn. Make participation voluntary. A reward must not be tied to a positive review. Keep personal information and contact channels separate from aggregate product analytics.
+
+## Growth dashboard v0.1
+
+BiteOS workspace #retail-robys-growth displays synthetic data on GitHub Pages and explicitly imported aggregate JSON in the local dev build. It reads the existing two export schemas independently, validates bounds/tenant/evidence flags, renders product ranking, sources, entry hours, semantic area clicks, and counter KPIs. Files remain in memory, with no upload or storage; clear resets both reports. No aggregate join, paid-conversion calculation, live tracking, unique customer claim or real revenue claim. Product images are existing reviewed assets. Exact-head tests required.
