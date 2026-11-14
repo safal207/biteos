@@ -7,7 +7,7 @@ func observatoryFixture(t *testing.T)(tenantEntry,observationPlanInput,time.Time
  b,err:=loadRecipeBook(t.TempDir(),c);if err!=nil{t.Fatal(err)}
  entry:=tenantEntry{catalog:c,recipes:b}
  i:=economicFixture();r,err:=calculateEconomic(c,b,i);if err!=nil{t.Fatal(err)}
- return entry,observationPlanInput{"nov-pilot","2026-11-15",r.Digest,i},time.Date(2026,11,14,10,0,0,0,time.UTC)
+ return entry,observationPlanInput{"nov-pilot","2026-11-15",r.Digest,i,""},time.Date(2026,11,14,10,0,0,0,time.UTC)
 }
 func observedFixture(p observationPlan)observationInput{
  return observationInput{PlanID:p.ID,PlanDigest:p.Digest,Source:"manual-tally",CampaignCost:10000,Windows:[]observedWindow{

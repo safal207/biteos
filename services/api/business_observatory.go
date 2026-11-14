@@ -13,6 +13,7 @@ type observationPlanInput struct{
  StartDay string `json:"startDay"`
  ExpectedDigest string `json:"expectedDigest"`
  Scenario economicInput `json:"scenario"`
+ Reason string `json:"reason,omitempty"`
 }
 type observationPlan struct{
  Version int `json:"version"`
@@ -23,6 +24,8 @@ type observationPlan struct{
  CreatedAt time.Time `json:"createdAt"`
  Forecast economicReport `json:"forecast"`
  Digest string `json:"digest"`
+ Reason string `json:"reason,omitempty"`
+ RecordedByRole string `json:"recordedByRole,omitempty"`
 }
 type observedWindow struct{
  ID string `json:"id"`
@@ -65,10 +68,10 @@ func observationEnd(start string,days int)string{
  return end
 }
 func newObservationPlan(entry tenantEntry,i observationPlanInput,now time.Time)(observationPlan,error){
- p:=observationPlan{Version:1,ID:i.ID,TenantID:entry.catalog.TenantID,StartDay:i.StartDay,EndExclusive:observationEnd(i.StartDay,i.Scenario.Days),CreatedAt:now.UTC()}
+ p:=observationPlan{Version:1,ID:i.ID,TenantID:entry.catalog.TenantID,StartDay:i.StartDay,EndExclusive:observationEnd(i.StartDay,i.Scenario.Days),CreatedAt:now.UTC(),Reason:i.Reason,RecordedByRole:"owner"}
  today:=lifetimeToday(now)
  t,_:=time.Parse("2006-01-02",today)
- if !validTenantID(i.ID)||p.EndExclusive==""||i.StartDay<=today||i.StartDay>t.AddDate(0,0,90).Format("2006-01-02")||!reviewHex(i.ExpectedDigest){return p,errors.New("plan requires a future dated window")}
+ if !validDecisionReason(i.Reason)||!validTenantID(i.ID)||p.EndExclusive==""||i.StartDay<=today||i.StartDay>t.AddDate(0,0,90).Format("2006-01-02")||!reviewHex(i.ExpectedDigest){return p,errors.New("plan requires a future dated window")}
  r,err:=calculateEconomic(entry.catalog,entry.recipes,i.Scenario)
  if err!=nil{return p,err}
  if r.Digest!=i.ExpectedDigest{return p,errors.New("forecast changed")}
@@ -76,6 +79,7 @@ func newObservationPlan(entry tenantEntry,i observationPlanInput,now time.Time)(
  return p,nil
 }
 func validObservationPlan(p observationPlan,tenant string)bool{
+ if !validDecisionReason(p.Reason)||(p.RecordedByRole!=""&&p.RecordedByRole!="owner")||(p.Reason!=""&&p.RecordedByRole!="owner"){return false}
  if p.Version!=1||p.TenantID!=tenant||!validTenantID(p.ID)||p.CreatedAt.IsZero()||p.StartDay<=lifetimeToday(p.CreatedAt)||p.EndExclusive==""||p.EndExclusive!=observationEnd(p.StartDay,p.Forecast.Assumptions.Days)||p.Digest!=planDigest(p){return false}
  t,err:=time.Parse("2006-01-02",lifetimeToday(p.CreatedAt));if err!=nil||p.StartDay>t.AddDate(0,0,90).Format("2006-01-02"){return false}
  r,err:=economicFromSnapshot(p.Forecast.Recipe,p.Forecast.Assumptions,tenant)
@@ -129,7 +133,7 @@ func serveObservatoryAt(w http.ResponseWriter,r *http.Request,entry tenantEntry,
  case "plan":
   if old,ok:=e.observationPlans[plan.ID];ok{
    plan.Scenario.Selection=canonicalRecipeSelection(plan.Scenario.Selection)
-   if old.StartDay!=plan.StartDay||old.Forecast.Digest!=plan.ExpectedDigest||obsBytes(old.Forecast.Assumptions)!=obsBytes(plan.Scenario){fail(w,409,"plan immutable");return}
+   if old.StartDay!=plan.StartDay||old.Reason!=plan.Reason||old.Forecast.Digest!=plan.ExpectedDigest||obsBytes(old.Forecast.Assumptions)!=obsBytes(plan.Scenario){fail(w,409,"plan immutable");return}
    respond(w,200,old);return
   }
   p,err:=newObservationPlan(entry,plan,now);if err!=nil{fail(w,422,err.Error());return}
