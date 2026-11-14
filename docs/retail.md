@@ -95,6 +95,20 @@ CI builds the native executable, tests corrupted/conflicting/truncated batches a
 - TR/RU/EN responsive UI uses existing React, TypeScript, and CSS. No extra dependency. Frontend-only templates and anonymous lists are deliberate for this stage; shared Go rules and SQLite member/loyalty ledgers need auth, consent, refund/expiry rules and server-side idempotency first.
 - Node tests cover budget boundary, missing stock, changed prices and corrupt local data. Require exact-head CI and browser smoke before release. For the underlying prioritization see [world benchmark](club-world-benchmark-2026.md).
 
+## BiteOS Demand v0.1 — request-to-procurement loop
+
+Customer chooses a fixed illustrative candidate (kefir, tvorog, sour cream, rye bread) and desired quantity 1–10, then explicitly submits an interest signal. No assertion about actual Rozal assortment, no free text, name, phone, location, payment, preorder, reservation or arrival promise. GET /api/retail/demand returns cumulative request and quantity counts; neither unique customers nor conversion rates are known. POST accepts an idempotency key; only its hash is persisted. Reuse with the same body returns existing signal; changed content conflicts. Capacity 1000 signals; abuse prevention, retention/deletion policy and auth are prerequisites to real collection.
+
+The optional demandSignals field is part of existing checksummed checkpoint/SQLite state, writes under the same engine lock and transaction; old state without it remains valid. Interest is not a commerce effect and is intentionally excluded from the LiminalDB order/receipt evidence profile. No demand-derived inventory mutation or automatic buying.
+
+Owner POST /api/retail/demand/plan takes candidate ID, batch size, unit purchase cost, sale price, expected sold quantity, extra fixed batch cost and gross margin floor; all money uses TRY minor units. Investment = batch * unit cost + fixed cost; contribution = sold * sale price - investment (zero recovery value on unsold stock); break-even = ceil(investment/sale price). Margin floor checked by integer cross multiplication. Decisions are review labels, not procurement authorization; positive interest does not predict sell-through. Unsold cost is already included in investment, not subtracted twice. Excludes taxes, overhead, actual supplier terms and returns.
+
+TR/RU/EN separate demo screens: #retail-demand and #retail-demand-business (linked from Finance). Static mode is screen-local, resets on navigation and does not send or share requests; local mode reads actual demo signals. In-page retry retains the same request key and payload; reload may lose that key. Shopper link appears only when cart is empty and no active order. Neither route is authenticated. Do not publicly expose the local API.
+
+Causal hypothesis: unmet need -> explicit nonbinding request -> aggregated candidate counts -> owner evaluates supplier quote and downside -> small authorized purchase -> observed sell-through -> future assortment review. Real decision loop still needs authenticated procurement, expiry and supplier tracking, traceable sell-through, time windows and lawful opt-in alerts. No new external dependencies.
+
+Tests cover validation, replay/conflict, checkpoint and SQLite reopen, signal isolation and scenario boundaries. Require exact-head CI and browser regression.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
