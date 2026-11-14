@@ -25,3 +25,5 @@
 .club-goals small{font-size:.73rem;line-height:1.3}
 .club-ready{color:#246747;font-weight:700}
 @media(max-width:620px){.club-context{grid-template-columns:repeat(2,minmax(0,1fr))}.club-context label:last-child{grid-column:1/-1}}
+
+.rhythm-panel{border-top:1px solid #e8d8d2;padding-top:16px;margin-top:16px}.rhythm-panel h3{margin:0 0 6px}.rhythm-current{margin:12px 0;background:#fff8f0;border-radius:12px;padding:12px}.rhythm-current p{margin:0 0 8px}.rhythm-panel input[type=date]{max-width:100%}
