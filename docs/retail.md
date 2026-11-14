@@ -246,6 +246,17 @@ SQLite stores plans and observations in optional tenant-bound state maps (64 pla
 
 #retail-observatory is a TR/RU/EN local illustrative UI with a frozen forecast and editable sample result, linked from Economics; not connected to the protected server or saving records. Tests cover dates, tamper/mismatched inputs, forecast errors, duplicate/conflicting submissions and tenant-specific persistence. Exact-head CI and browser checks still required. Next: merchant-approved data intake, revision/supersession contract and a controlled, measured pilot rather than adding unverified autonomous actions.
 
+## Pilot stabilization v0.1 — workspace and cross-module regression
+
+New opt-in #workspace route provides a trilingual searchable directory for all 15 existing kiosk/retail routes. Modules are grouped by Commerce, Operations, Analytics and Studios; mode labels distinguish demo, local-key views and simulations. Existing root delivery and #kiosk routes remain unchanged; delivery sidebar links to the workspace, analytics/studio views have a return link. Navigation is not access control. Language selection currently belongs to each individual screen; unsaved drafts and in-memory carts may reset when leaving that screen. No tenant credentials are stored by the directory. The demo still contains no authorized merchant data.
+
+Regression additions:
+- Node route registry tests compare every documented kiosk/retail route against the actual route dispatch, check duplicates, translations and search.
+- Browser smoke workflow builds the Pages bundle and serves it under /biteos/ locally in CI. Runs Chromium, Firefox and WebKit with 390px and 1280px viewports; checks all 15 navigation targets, hub search/return, hub overflow, page exceptions and absence of backend API calls in static mode, plus the observatory causal-effect disclaimer. Playwright 1.56.1 is an isolated pinned CI test-only installation, not a runtime dependency or new paid license. Matrix results required before any browser PASS claim; this is not a full accessibility, performance, checkout, or device certification.
+- SQLite owner journey integration test crosses tenant gateway catalog, recipe snapshot, immutable review/replay, economics, and future observation preregistration. Checks early actual submission rejection, persistence/reopen, tenant isolation and no commerce mutation. Does not simulate external POS or paid orders.
+
+Release gate: exact-head main CI, evidence compatibility and browser matrix all must pass; review differences before merging. Next unresolved: ambiguous checkout replay and price confirmation, tenant-specific named staff authentication, tenant-aware owner UI bound to the protected API, external POS reconciliation and tenant-bound evidence streams, merchant-approved catalog and cost/recipe data, correction/supersession of observation records and a rollback/support procedure. Public production and real payments remain NO-GO. No merge or Pages publication is part of this change.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
