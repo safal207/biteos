@@ -92,10 +92,13 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 	for i,p:=range e.products{
 		if p.ID==req.ProductID{
 			if p.Stock>100000-req.Quantity{fail(w,422,"stock limit exceeded");return}
+			before,err:=e.beforeMutation()
+			if err!=nil {fail(w,503,"checkpoint unavailable");return}
 			e.products[i].Stock+=req.Quantity
 			m:=e.recordMovement(p.ID,"receive",req.Quantity,req.Reference,req.UnitCost)
 			e.receipts[key]=retailReceipt{hash,m}
 			e.emitEvidence(fmt.Sprintf("receipt-%d",len(e.receipts)),"inventory","received",1)
+			if err=e.commitMutation(before);err!=nil {fail(w,503,"checkpoint unavailable");return}
 			respond(w,201,m);return
 		}
 	}
