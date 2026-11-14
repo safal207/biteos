@@ -2,7 +2,6 @@ package main
 
 import (
  "crypto/sha256"
- "crypto/subtle"
  "errors"
  "fmt"
  "net"
@@ -23,7 +22,7 @@ func validTenantID(id string)bool{
 }
 type tenantConfig struct{ID,Token string}
 type tenantEntry struct{digest [32]byte; engine *retailEngine; handler *http.ServeMux; brand brandProfile; catalog universalCatalog; recipes recipeBook}
-type tenantGateway struct{entries map[string]tenantEntry}
+type tenantGateway struct{entries map[string]tenantEntry; roles map[string][]tenantRoleCredential}
 func validateTenantConfigs(config []tenantConfig)error{
  if len(config)<1||len(config)>8{return errors.New("configure 1–8 tenants")}
  ids:=map[string]bool{};keys:=map[[32]byte]bool{}
@@ -37,12 +36,16 @@ func validateTenantConfigs(config []tenantConfig)error{
 // Separate SQLite databases and engines; no implicit tenant or legacy fallback.
 // Root is operator-controlled, not supplied by an HTTP request.
 func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
+ return openTenantGatewayWithRoles(root,config,nil)
+}
+func openTenantGatewayWithRoles(root string,config []tenantConfig,roles []tenantRoleConfig)(*tenantGateway,error){
  if err:=validateTenantConfigs(config);err!=nil{return nil,err}
+ credentials,err:=validateTenantRoles(config,roles);if err!=nil{return nil,err}
  if root==""{return nil,errors.New("explicit tenant root required")}
  if err:=os.MkdirAll(root,0700);err!=nil{return nil,err}
  absolute,err:=filepath.Abs(root);if err!=nil{return nil,err}
  info,err:=os.Lstat(absolute);if err!=nil||!info.IsDir()||info.Mode()&os.ModeSymlink!=0{return nil,errors.New("tenant root must be a real directory")}
- g:=&tenantGateway{entries:map[string]tenantEntry{}}
+ g:=&tenantGateway{entries:map[string]tenantEntry{},roles:credentials}
  for _,c:=range config{
   brand,err:=loadTenantBrand(absolute,c.ID);if err!=nil{return nil,fmt.Errorf("tenant %s brand: %w",c.ID,err)}
   catalog,err:=loadUniversal(absolute,c.ID);if err!=nil{return nil,fmt.Errorf("tenant %s catalog: %w",c.ID,err)}
@@ -59,8 +62,8 @@ func openTenantGateway(root string,config []tenantConfig)(*tenantGateway,error){
  }
  return g,nil
 }
-// All exposed endpoints require the tenant-wide operator key. Role-specific
-// legacy review/business and independent restaurant APIs are deliberately absent.
+// The route allowlist is a hard upper bound even for owner credentials.
+// Legacy review/business and independent restaurant APIs are deliberately absent.
 func tenantAllowed(path,method string)bool{
  switch path{
  case "observatory","brand","catalog","delivery","evidence","finance","lifetime","brain":return method=="GET"
@@ -76,8 +79,11 @@ func(g *tenantGateway) ServeHTTP(w http.ResponseWriter,r *http.Request){
  parts:=strings.SplitN(strings.TrimPrefix(r.URL.Path,"/api/tenants/"),"/",3)
  if len(parts)!=3||!validTenantID(parts[0])||parts[1]!="retail"||!tenantAllowed(parts[2],r.Method){fail(w,404,"tenant endpoint unavailable");return}
  entry,ok:=g.entries[parts[0]]
+ if !ok||len(r.Header.Values("Authorization"))!=1{fail(w,401,"tenant credential required");return}
  got:=sha256.Sum256([]byte(r.Header.Get("Authorization")))
- if !ok||subtle.ConstantTimeCompare(entry.digest[:],got[:])!=1{fail(w,401,"tenant credential required");return}
+ role:=authenticateTenantRole(entry.digest,g.roles[parts[0]],got)
+ if role==""{fail(w,401,"tenant credential required");return}
+ if !tenantRoleAllowed(role,parts[2],r.Method){fail(w,403,"tenant role forbidden");return}
  // Reject tenant selection via query or header: path is authoritative.
  if r.URL.Query().Has("tenant")||r.URL.Query().Has("tenantId")||r.Header.Get("X-Tenant-ID")!=""{fail(w,400,"tenant selection must use path only");return}
  if parts[2]=="brand"{respond(w,200,entry.brand);return}
@@ -114,7 +120,7 @@ func runTenantServer()error{
  configs,err:=tenantConfigsFromEnv();if err!=nil{return err}
  addr:=env("BITEOS_TENANT_ADDR","127.0.0.1:8092")
  if !tenantLoopback(addr){return errors.New("tenant demo requires literal loopback address")}
- g,err:=openTenantGateway(os.Getenv("BITEOS_TENANT_ROOT"),configs);if err!=nil{return err}
+ g,err:=openTenantGatewayWithRoles(os.Getenv("BITEOS_TENANT_ROOT"),configs,tenantRolesFromEnv(configs));if err!=nil{return err}
  server:=&http.Server{Addr:addr,Handler:g,ReadHeaderTimeout:5*time.Second,ReadTimeout:10*time.Second,WriteTimeout:10*time.Second,IdleTimeout:60*time.Second}
  return server.ListenAndServe()
 }

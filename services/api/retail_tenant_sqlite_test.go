@@ -201,3 +201,44 @@ func TestTenantObservatoryPersistence(t *testing.T){
  w=tenantCall(g,"GET","/api/tenants/rozal/retail/observatory",config[0].Token,"","")
  if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&list)!=nil||len(list.Plans)!=0||len(list.Observations)!=0{t.Fatal("cross-tenant history",w.Code)}
 }
+
+func TestTenantRoleGatewayBoundary(t *testing.T){
+ owners:=tenantFixture()
+ roles:=[]tenantRoleConfig{
+  {"rozal","manager","test-manager-secret-000000000000000"},
+  {"rozal","cashier","test-cashier-secret-000000000000000"},
+  {"rozal","customer","test-customer-secret-00000000000000"},
+ }
+ g,err:=openTenantGatewayWithRoles(t.TempDir(),owners,roles);if err!=nil{t.Fatal(err)}
+ a,b:="/api/tenants/rozal/retail/","/api/tenants/robys/retail/"
+ before,_:=json.Marshal(g.entries["rozal"].engine.state())
+ for _,c:=range []struct{role int;method,path string;want int}{
+  {0,"GET",a+"finance",403},{0,"POST",a+"recipe-cost/review",403},
+  {1,"POST",a+"inventory",403},{1,"GET",a+"evidence",403},
+  {2,"POST",a+"orders",403},{2,"GET",a+"order?id=foreign",403},
+  {2,"GET",a+"finance?role=owner",403},{1,"GET",b+"catalog",401},
+  {2,"GET",a+"catalog",200},{1,"GET",a+"delivery",200},
+ }{
+  w:=tenantCall(g,c.method,c.path,roles[c.role].Token,"role-test-key","{}")
+  if w.Code!=c.want{t.Fatal(c,w.Code,w.Body.String())}
+ }
+ after,_:=json.Marshal(g.entries["rozal"].engine.state())
+ if string(before)!=string(after){t.Fatal("denied operations mutated state")}
+ // An attacker-controlled role header must not grant permissions.
+ req:=httptest.NewRequest("GET",a+"finance",nil)
+ req.Header.Set("Authorization","Bearer "+roles[2].Token)
+ req.Header.Set("X-Role","owner")
+ w:=httptest.NewRecorder();g.ServeHTTP(w,req)
+ if w.Code!=403{t.Fatal("role spoof",w.Code)}
+ req.Header.Add("Authorization","Bearer "+owners[0].Token)
+ w=httptest.NewRecorder();g.ServeHTTP(w,req)
+ if w.Code!=401{t.Fatal("ambiguous credentials",w.Code)}
+ body:=`{"items":[{"id":"milk","quantity":1}],"mode":"pickup","replacement":"skip","expectedPrice":{"unitPrices":{"milk":4900},"fee":0}}`
+ w=tenantCall(g,"POST",a+"orders",roles[1].Token,"role-test-key",body)
+ if w.Code!=201{t.Fatal(w.Code,w.Body.String())}
+ var order retailOrder
+ if err=json.Unmarshal(w.Body.Bytes(),&order);err!=nil{t.Fatal(err)}
+ if w=tenantCall(g,"GET",a+"order?id="+order.ID,roles[2].Token,"","");w.Code!=403{t.Fatal("customer order leak",w.Code)}
+ if w=tenantCall(g,"POST",a+"order?id="+order.ID,roles[1].Token,"",`{"status":"picking"}`);w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ if w=tenantCall(g,"GET",a+"finance",owners[0].Token,"","");w.Code!=200{t.Fatal(w.Code)}
+}

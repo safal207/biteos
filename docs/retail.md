@@ -274,3 +274,16 @@ Go owns transactions and prices. Keep Rust suggestions isolated and optional; no
 ## Checkout price precondition (local pilot groundwork)
 
 The local retail UI sends optional `expectedPrice: {unitPrices: {sku: minorUnits}, fee: minorUnits}` with the checkout request. Under the reservation lock the server compares the complete SKU price map and delivery fee to authoritative values before writing stock, slot, order, idempotency or evidence state. A mismatch returns HTTP 412; the UI refreshes the catalog and requests explicit confirmation, never auto-submits. Existing accepted idempotency keys replay before price checks; changing the confirmed request under an accepted key still conflicts. Omitting the precondition retains legacy demo API compatibility (not a production authorization gate). No price hold, payment, durable client retry or live commerce authorization is implied. Exact-head CI is required.
+
+## Tenant role boundary v0.1 (local pilot only)
+
+The existing per-tenant token is the owner credential. Optional distinct service credentials are configured at startup via BITEOS_TENANT_TOKEN_ROZAL_MANAGER, BITEOS_TENANT_TOKEN_ROZAL_CASHIER and BITEOS_TENANT_TOKEN_ROZAL_CUSTOMER (analogous for other tenant IDs). Generate separate random secrets; never embed them in frontend bundles. Reused tokens across tenants/roles, invalid or explicitly empty role credentials fail startup. Existing owner-only configurations remain valid.
+
+| Capability | Owner | Manager | Cashier | Customer demo |
+|---|---|---|---|---|
+| Brand, catalog, delivery, universal quote | yes | yes | yes | yes |
+| Create, read, transition tenant orders | yes | yes | yes | no |
+| Stock/receipts, shelf life, demand and demand planning | yes | yes | no | no |
+| Finance, evidence, recipe review, economic scenarios, observatory and other owner endpoints | yes | no | no | no |
+
+Only existing globally allowlisted methods/routes can be authorized. Unknown or wrong tenant credential: 401; valid tenant credential lacking permission: 403. No trust in client role headers or query parameters. Denials precede handlers. Customer demo credentials grant catalog/quotation only: no per-customer identity/order ownership exists. Cashier and manager are shared role credentials with store-wide order visibility, not named users. No sessions, password recovery, rotation without restart, audit actor identity, rate limiting or public login. Operator-only loopback restriction still applies. Browser demo is unchanged. This is a bounded authorization layer, not production IAM; exact-head CI required.
