@@ -105,3 +105,47 @@ func TestTenantRecipeBoundary(t *testing.T){
  if w=tenantCall(g,"GET",b,config[0].Token,"","");w.Code!=401{t.Fatal("foreign credential",w.Code)}
  after,_:=json.Marshal(g.entries["robys"].engine.state());if string(before)!=string(after){t.Fatal("cost simulation mutated state")}
 }
+
+func TestTenantRecipeReviewPersistence(t *testing.T){
+ root:=t.TempDir();config:=tenantFixture();g,err:=openTenantGateway(root,config);if err!=nil{t.Fatal(err)}
+ base:="/api/tenants/robys/retail/recipe-cost";token:=config[1].Token
+ selection:=universalQuoteInput{"latte","large",2,map[string][]string{"extras":{"extra-shot","oat-drink"}}}
+ raw,_:=json.Marshal(selection)
+ w:=tenantCall(g,"POST",base+"/snapshot",token,"",string(raw))
+ var snapshot recipeSnapshot
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&snapshot)!=nil||!validRecipeSnapshot(snapshot,"robys"){t.Fatal(w.Code,w.Body.String())}
+ in:=recipeReviewInput{selection,snapshot.Digest,"reviewed"}
+ body,_:=json.Marshal(in)
+ e:=g.entries["robys"].engine
+ before:=e.state()
+ w=tenantCall(g,"POST",base+"/review",config[0].Token,"",string(body));if w.Code!=401{t.Fatal("foreign token",w.Code)}
+ w=tenantCall(g,"POST",base+"/review",token,"",string(body))
+ var receipt struct{Record recipeReviewRecord;Current bool;ExternalEffectsAuthorized bool}
+ if w.Code!=201||json.Unmarshal(w.Body.Bytes(),&receipt)!=nil||!receipt.Current||receipt.ExternalEffectsAuthorized||receipt.Record.ExternalEffectsAuthorized||len(e.recipeReviews)!=1{t.Fatal(w.Code,w.Body.String())}
+ state:=e.state();state.RecipeReviews=nil
+ a,_:=json.Marshal(before);b,_:=json.Marshal(state);if string(a)!=string(b){t.Fatal("review changed commerce")}
+ original:=receipt.Record
+ w=tenantCall(g,"POST",base+"/review",token,"",string(body));if w.Code!=200{t.Fatal(w.Code)}
+ in.Outcome="needs-followup";bad,_:=json.Marshal(in)
+ if w=tenantCall(g,"POST",base+"/review",token,"",string(bad));w.Code!=409{t.Fatal("outcome conflict",w.Code)}
+ in.Outcome="reviewed";in.Selection.Quantity=1;bad,_=json.Marshal(in)
+ if w=tenantCall(g,"POST",base+"/review",token,"",string(bad));w.Code!=409{t.Fatal("selection conflict",w.Code)}
+ // Obtain a second, as-yet unreviewed snapshot before configuration changes.
+ selection.Quantity=1;raw,_=json.Marshal(selection)
+ w=tenantCall(g,"POST",base+"/snapshot",token,"",string(raw))
+ var pending recipeSnapshot
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&pending)!=nil{t.Fatal(w.Code,w.Body.String())}
+ book:=g.entries["robys"].recipes;book.Costs[0].PackCost+=10000
+ raw,_=json.Marshal(book)
+ if err=os.WriteFile(filepath.Join(root,"robys.recipes.json"),raw,0600);err!=nil{t.Fatal(err)}
+ g,err=openTenantGateway(root,config);if err!=nil{t.Fatal(err)}
+ w=tenantCall(g,"POST",base+"/review",token,"",string(body))
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&receipt)!=nil||receipt.Current||receipt.Record.Digest!=original.Digest{t.Fatal("historical replay",w.Code,w.Body.String())}
+ bad,_=json.Marshal(recipeReviewInput{selection,pending.Digest,"reviewed"})
+ if w=tenantCall(g,"POST",base+"/review",token,"",string(bad));w.Code!=409{t.Fatal("stale new review",w.Code)}
+ w=tenantCall(g,"GET",base+"/review",token,"","")
+ var history struct{Records []recipeReviewRecord}
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&history)!=nil||len(history.Records)!=1||history.Records[0].Digest!=original.Digest{t.Fatal(w.Code,w.Body.String())}
+ w=tenantCall(g,"GET","/api/tenants/rozal/retail/recipe-cost/review",config[0].Token,"","")
+ if w.Code!=200||json.Unmarshal(w.Body.Bytes(),&history)!=nil||len(history.Records)!=0{t.Fatal("foreign history",w.Code,w.Body.String())}
+}
