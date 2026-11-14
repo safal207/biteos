@@ -84,7 +84,6 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 	if !retailDecode(w,r,&req){return}
 	key:=r.Header.Get("Idempotency-Key")
 	if len(key)<8||len(key)>128||req.Quantity<1||req.Quantity>1000||req.UnitCost<1||req.UnitCost>100000000||strings.TrimSpace(req.Reference)==""||len(req.Reference)>128{fail(w,422,"invalid receipt");return}
-	if req.UseBy!="" && (!validLifetimeDay(req.UseBy)||req.UseBy<=lifetimeToday(time.Now())) {fail(w,422,"use-by date must be in the future");return}
 	data,_:=json.Marshal(req)
 	hash:=sha256.Sum256(data)
 	e.mu.Lock()
@@ -94,6 +93,7 @@ func(e *retailEngine) inventory(w http.ResponseWriter,r *http.Request){
 		if old.Hash!=hash{fail(w,409,"receipt key conflict");return}
 		respond(w,200,old.Movement);return
 	}
+	if req.UseBy!="" && (!validLifetimeDay(req.UseBy)||req.UseBy<=lifetimeToday(time.Now())) {fail(w,422,"use-by date must be in the future");return}
 	if len(e.receipts)>=1000{fail(w,503,"demo capacity reached");return}
 	for i,p:=range e.products{
 		if p.ID==req.ProductID{
