@@ -153,6 +153,22 @@ POST accepts snapshot, decisionId and outcome (reviewed or needs-followup). Unde
 
 UI in #retail-brain makes review recording explicit; static mode stays read-only. Tests cover token disabled/denial, replay/conflict, changed demand snapshot, checkpoint and SQLite reopen, record digest and no commerce mutation. CI and browser verification required. Before real authority: authenticated named staff, least-privilege permissions, isolated action endpoints, transaction-specific validation, independent evidence and reconciliation, revocation/expiry and rollback. Do not connect a review record to automatic execution.
 
+## BiteOS Business OS v0.1 — role workspace pilot
+
+GET /api/retail/business?role=owner|admin|seller|warehouse|courier returns a reconciled read-only projection; disabled by default separately per role. Configure distinct high-entropy secrets (minimum 32 bytes) outside source control in BITEOS_OWNER_TOKEN, BITEOS_ADMIN_TOKEN, BITEOS_SELLER_TOKEN, BITEOS_WAREHOUSE_TOKEN and BITEOS_COURIER_TOKEN. Same secret across roles or shared with BITEOS_REVIEW_TOKEN disables the overlapping workspace. Authorization: Bearer <role secret>. Credentials are compared in constant time via hashes. This is local demo gating of this endpoint only — not named staff identity, production RBAC, a TLS/session system or protection for the older demo API. Never publicly expose it.
+
+- owner: all open orders, financial sample metrics, Brain decisions;
+- admin: all open orders, counts, P0/P1 safety/data-quality signals with money facts excluded;
+- seller: packed pickup orders with SKU quantities;
+- warehouse: reserved/picking orders with SKU quantities;
+- courier: packed/in-transit delivery orders and demo zone/slot, without item details or addresses.
+
+All queues place known dated-lot holds first. No task assignment, identity of individual employees, personal customer data, actual cash-register functions, coordinates, route dispatch, inventory mutation or status transitions. Queue size is a view of existing aggregate state, not a count of assigned tasks. Undated lots remain demo-only. No review or approval authorizes action. HTTP methods other than GET denied, fail closed on inconsistent finance/storage; no-store responses. No new package or license.
+
+TR/RU/EN #retail-business linked from Finance. Pages mode uses fixed illustrative role data; local mode requires a separate configured key for each view. Role change clears credential/report and rejects late responses from previous views. Owner's navigation links remain independent legacy demo tools and are not access-controlled by this role view. Tests verify scope, masked financial facts, different keys, method denial, and unchanged state. Exact-head CI and browser verification required.
+
+Next: authenticated individual staff and store tenant, default-deny middleware for every business endpoint, permission/action matrix including order ownership, audited transitions, dated shifts, receiving and picking verification, negative authorization tests. Only then consider a real merchant pilot.
+
 ## Verification
 
 Existing CI runs Go tests, race detector, React build, and restaurant/kiosk tests. New retail Go tests cover stock reservation, duplicate requests, conflict, cancellation, invalid transitions, failed basket, concurrent purchase of last stock, slot capacity/cancellation, invalid delivery parameters and idempotent procurement receipts. Before merging, require full CI and browser smoke at 360px and desktop, three languages, pickup/delivery, cancellation, and no regression of #kiosk and default restaurant routes.
