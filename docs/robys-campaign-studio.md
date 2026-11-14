@@ -1,0 +1,7 @@
+# Robys Campaign Studio v0.1
+
+Draft workspace #retail-robys-campaign: choose a real catalog target, tagged channel, 1–14 day window (Istanbul, end exclusive), planned budget and order-handoff target. It generates the currently supported pilot UTM link and an equal adjacent preceding baseline. Local mode can download the draft and read two existing Event Collector aggregate JSON reports without upload. The public Pages mode uses illustrative data only; no local report input.
+
+Use one pilot campaign per channel and overlapping window, including the reference period. The present source contract has a fixed pilot tag, not unique campaign IDs. This is an operational convention, not enforced centrally. The tag/channel report cannot isolate a particular target SKU, and no baseline exposure may be a real measurement gap rather than evidence of growth. Zero denominators produce null. The preceding window is descriptive, not a randomized control; check weekday mix, concurrent offers, consent coverage and POS reconciliation independently. The app calculates planned cost per recorded handoff, not actual acquisition cost or revenue. Report metadata and schema checks are local validation, not provenance authentication. No campaign execution, price change, publication, customer identity or payment authority. No new dependencies.
+
+Next: reserved unique campaign IDs, signed or authenticated report provenance, meaningful baseline coverage, paid-order attribution and consented loyalty metrics.

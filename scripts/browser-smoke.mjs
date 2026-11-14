@@ -33,14 +33,14 @@ try{
   await page.locator(".biteos-workspace h1").waitFor();
   await page.getByLabel("Language").selectOption("ru");
   const links=page.locator("[data-workspace-route]");
-  assert.equal(await links.count(),17);
+  assert.equal(await links.count(),18);
   const routes=await links.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
   await page.locator(".workspace-search input").fill("ОБСЕРВАТОРИЯ");
   assert.equal(await links.count(),1);
   await page.locator(".workspace-search input").fill("zz-no-result");
   assert.equal(await links.count(),0);
   await page.locator(".workspace-search input").fill("");
-  assert.equal(await links.count(),17);
+  assert.equal(await links.count(),18);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"workspace horizontal overflow");
   for(const route of routes){
    await page.goto(base+"#workspace");
@@ -86,8 +86,17 @@ try{
   assert.equal(await page.locator("[data-robys-catalog-id]").count(),0);
   await page.getByLabel("Search products").fill("");
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"growth dashboard overflow");
+  await page.goto(base+"#retail-robys-campaign");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("heading",{name:"Roby’s campaign studio"}).waitFor();
+  const link=await page.getByLabel("Campaign link").inputValue();
+  assert.ok(link.includes("utm_source=instagram")&&link.includes("utm_campaign=pilot"));
+  await page.getByLabel("Channel").selectOption("table_qr");
+  assert.ok((await page.getByLabel("Campaign link").inputValue()).includes("utm_source=table_qr"));
+  assert.equal(await page.locator("input[type=file]").count(),0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),"campaign studio overflow");
   assert.deepEqual(failures,[]);
-  console.log(engine+" "+viewport.width+"px: 17 routes, search, return navigation, observatory verified");
+  console.log(engine+" "+viewport.width+"px: 18 routes, search, return navigation, observatory verified");
   await page.close();
  }
 }finally{if(browser)await browser.close();await new Promise(ok=>server.close(ok))}
