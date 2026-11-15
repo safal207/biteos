@@ -60,6 +60,7 @@ import { RobysPilotReport } from "./RobysPilotReport";
 import { RobysExperimentStudio } from "./RobysExperimentStudio";
 import { RobysForecastStudio } from "./RobysForecastStudio";
 import { RobysMarketStudio } from "./RobysMarketStudio";
+import { RobysOperationsStudio } from "./RobysOperationsStudio";
 import { RobysCampaignStudio } from "./RobysCampaignStudio";
 import { RobysLoyalty } from "./RobysLoyalty";
 import { RobysCommunityStudio } from "./RobysCommunityStudio";
@@ -1477,6 +1478,7 @@ function BiteOS() {
   if (route === "#retail-robys-experiment") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysExperimentStudio /></>;
   if (route === "#retail-robys-forecast") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysForecastStudio /></>;
   if (route === "#retail-robys-market") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysMarketStudio /></>;
+  if (route === "#retail-robys-operations") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysOperationsStudio /></>;
   if (route === "#retail-robys-growth") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RobysGrowthDashboard /></>;
   if (route === "#retail-decision-studio") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailDecisionStudio /></>;
   if (route === "#retail-observatory") return <><a className="workspace-back" href="#workspace">← BiteOS Workspace</a><RetailObservatory /></>;
