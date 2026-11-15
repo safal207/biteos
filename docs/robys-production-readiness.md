@@ -1,5 +1,5 @@
 # Roby’s → BiteOS: first controlled pilot, release gate
-Status: **draft / NO-GO for real guest tracking and commerce**. No production deployment, owner approval or verified commercial outcome. Reviewed Robys producer PR #501 at 0bc225921ff72749d2a4e44f9c7c15146388e2b7; BiteOS PR #1. Recheck both exact heads and tests before any rehearsal. Public sites unchanged.
+Status: **draft / NO-GO for real guest tracking and commerce**. No production deployment, owner approval or verified commercial outcome. Reviewed Robys producer PR #501 at ceba0f55fe270429fa3080020834312d30d76967; BiteOS PR #1. Recheck both exact heads and tests before any rehearsal. Public sites unchanged.
 
 ## Gate map
 | Gate | Evidence needed | State |
@@ -24,3 +24,7 @@ Status: **draft / NO-GO for real guest tracking and commerce**. No production de
 
 ## Rollback and decision authority
 Keep both PRs as drafts. No merges, live code changes, payments, stock or prices. If consent, data coverage, source integrity, security or economics are not confirmed, stop the pilot and record the issue; do not turn missing into zero. GitHub Pages only synthetic demos; actual commercial hosting costs may exist even with no required paid software. Real guest release needs independently reviewed retention/access/withdrawal and owner-approved rollback. All tests are engineering evidence only.
+
+## Exact-head cross-repository rehearsal
+
+The CI producer pin is updated to Robys #501 head `ceba0f55fe270429fa3080020834312d30d76967` (same reviewed contract blob `9e3ad10d1c697a83434e53fbc0e21b455264ac61`). In addition to source parity, the dedicated CI job runs the actual pinned producer module with synthetic opt-in events, imports into a temporary collector twice, verifies rejection of extra personal fields, decodes the aggregate for Growth, and checks that cart and shares are not sales. This is a module/SQLite integration test, not actual browser export, owner authorization or a live collector. Withdrawal clears only the source session; prior imports remain until governed deletion. New exact-head CI evidence required; no launch authorized.

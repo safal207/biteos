@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: safal207/robys-coffee-house-demo
-          ref: 0bc225921ff72749d2a4e44f9c7c15146388e2b7
+          ref: ceba0f55fe270429fa3080020834312d30d76967
           path: reviewed-robys
           persist-credentials: false
       - name: Verify pinned producer contract and offline handoff

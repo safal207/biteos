@@ -6,7 +6,7 @@ import {pathToFileURL} from "node:url";
 import {engagementReport} from "./robys-event-collector.mjs";
 import {businessReview} from "../apps/kiosk/src/robysBusinessBrain.ts";
 import {robysCatalog} from "../apps/kiosk/src/robysPublicCatalog.ts";
-export const reviewedRobys={revision:"0bc225921ff72749d2a4e44f9c7c15146388e2b7",contractBlob:"9e3ad10d1c697a83434e53fbc0e21b455264ac61"};
+export const reviewedRobys={revision:"ceba0f55fe270429fa3080020834312d30d76967",contractBlob:"9e3ad10d1c697a83434e53fbc0e21b455264ac61"};
 const DAY=86400000,RETENTION=30*DAY;
 const gitBlob=bytes=>createHash("sha1").update("blob "+bytes.length+"\0").update(bytes).digest("hex");
 function readBounded(file,limit){
