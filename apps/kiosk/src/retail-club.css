@@ -1,0 +1,29 @@
+.retail .club-panel{background:#fffdfa;border:1px solid #e8d8d2;border-radius:22px;padding:18px;margin:0 0 22px;color:#242323}
+.club-heading p{font-weight:800;letter-spacing:.09em;font-size:.72rem;color:#b3263b;margin:0}
+.club-heading h2{font-size:clamp(1.15rem,4vw,1.55rem);margin:6px 0 16px}
+.club-goals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.retail .club-goals button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;text-align:left;background:#fff8f0;border-color:#e8d8d2;min-height:112px;padding:14px;line-height:1.35;overflow-wrap:anywhere}
+.club-goals span{font-size:1.65rem}
+.retail .club-goals button:hover:not(:disabled){border-color:#b3263b}
+.club-lists{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.club-note{font-size:.82rem;color:#655459;line-height:1.5}
+.club-review{border-top:1px solid #e8d8d2;margin-top:18px;padding-top:14px}
+.club-review h3{margin:0}
+.club-review label{display:flex;flex-direction:column;gap:5px;font-size:.8rem}
+.club-review>label{max-width:280px;margin-bottom:12px}
+.club-review input{min-width:0;width:100%}
+.club-line{display:grid;grid-template-columns:minmax(0,1fr) 92px auto;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #efe2db}
+.club-line small{display:block;font-size:.78rem;margin-top:4px}
+.club-warning{color:#8a3d15;font-weight:600}
+.club-actions{display:flex;gap:8px;flex-wrap:wrap}
+.retail .club-actions button:first-child{background:#b3263b;color:#fff;border-color:#b3263b}
+@media(max-width:620px){.club-goals{grid-template-columns:repeat(2,minmax(0,1fr))}.retail .club-panel{padding:12px}.club-line{grid-template-columns:minmax(0,1fr) 72px}.club-line>button{grid-column:2;justify-self:end}.club-lists>button{flex:1 1 130px}}
+
+.club-context{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}
+.club-context label{display:flex;flex-direction:column;gap:5px;font-size:.8rem;font-weight:600;min-width:0}
+.club-context select,.club-context input{width:100%;min-width:0}
+.club-goals small{font-size:.73rem;line-height:1.3}
+.club-ready{color:#246747;font-weight:700}
+@media(max-width:620px){.club-context{grid-template-columns:repeat(2,minmax(0,1fr))}.club-context label:last-child{grid-column:1/-1}}
+
+.rhythm-panel{border-top:1px solid #e8d8d2;padding-top:16px;margin-top:16px}.rhythm-panel h3{margin:0 0 6px}.rhythm-current{margin:12px 0;background:#fff8f0;border-radius:12px;padding:12px}.rhythm-current p{margin:0 0 8px}.rhythm-panel input[type=date]{max-width:100%}

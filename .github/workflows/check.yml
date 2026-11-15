@@ -23,7 +23,38 @@ jobs:
         with:
           components: clippy, rustfmt
       - run: pnpm --dir apps/kiosk install --frozen-lockfile
+      - run: node scripts/dependency-review.mjs
       - run: node scripts/test.mjs
+      - run: node --test scripts/robys-counter-report.test.mjs scripts/robys-engagement.test.mjs scripts/robys-event-collector.test.mjs scripts/robys-pilot-handoff.test.mjs
       - run: cargo fmt --manifest-path services/recommender/Cargo.toml -- --check
       - run: go test -race ./...
         working-directory: services/api
+      - name: Install open-source SQLite system library
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev pkg-config
+      - name: SQLite WAL and transactional outbox
+        working-directory: services/api
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          pkg-config --modversion sqlite3
+          go test -race -count=1 -tags sqlite ./...
+
+  robys-pilot-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/checkout@v4
+        with:
+          repository: safal207/robys-coffee-house-demo
+          ref: 0bc225921ff72749d2a4e44f9c7c15146388e2b7
+          path: reviewed-robys
+          persist-credentials: false
+      - name: Verify pinned producer contract and offline handoff
+        env:
+          ROBYS_CONTRACT_FILE: reviewed-robys/scripts/biteos-pilot-contract.mjs
+        run: node --test scripts/robys-pilot-handoff.test.mjs

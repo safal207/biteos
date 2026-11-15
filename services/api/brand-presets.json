@@ -1,0 +1,30 @@
+[
+  {
+    "version": 1,
+    "tenantId": "rozal",
+    "name": "ROZAL",
+    "kind": "retail",
+    "accent": "#A62239",
+    "surface": "#FFF8F1",
+    "ink": "#332427",
+    "headline": {
+      "tr": "Mahallenizin marketi",
+      "ru": "Магазин вашего района",
+      "en": "Your neighborhood market"
+    }
+  },
+  {
+    "version": 1,
+    "tenantId": "robys",
+    "name": "Roby’s",
+    "kind": "coffee",
+    "accent": "#68432B",
+    "surface": "#FFF7ED",
+    "ink": "#33251E",
+    "headline": {
+      "tr": "Kahveye güzel bir mola",
+      "ru": "Время для хорошего кофе",
+      "en": "A moment for good coffee"
+    }
+  }
+]

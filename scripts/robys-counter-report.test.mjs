@@ -1,0 +1,40 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {mkdtempSync,rmSync,readFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {DatabaseSync} from "node:sqlite";
+import {reportCounter} from "./robys-counter-report.mjs";
+test("Robys read-only aggregate: Istanbul boundaries, independent cohorts, no raw identifiers",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"robys-report-")),file=join(dir,"counter.sqlite");
+ try{
+  const db=new DatabaseSync(file);
+  db.exec("PRAGMA user_version=1; CREATE TABLE orders(id TEXT PRIMARY KEY, created_at INTEGER, paid_at INTEGER, total_minor INTEGER); CREATE TABLE audit(order_id TEXT, action TEXT, at INTEGER, actor_username TEXT)");
+  const start=Date.parse("2026-11-14T00:00:00+03:00"),end=start+86400000;
+  const insert=db.prepare("INSERT INTO orders VALUES(?,?,?,?)");
+  insert.run("private-order-a",start,start+1000,12000);
+  insert.run("private-order-b",start+2000,null,8000);
+  insert.run("private-order-c",start-1000,start+2000,5000);
+  insert.run("private-order-d",end,null,1000);
+  insert.run("private-order-e",start+3000,end,2000);
+  const event=db.prepare("INSERT INTO audit VALUES(?,?,?,?)");
+  event.run("private-order-a","ready",start+61000,"private-staff");
+  event.run("private-order-a","ready",start+62000,"private-staff");
+  event.run("private-order-a","issued",start+70000,"private-staff");
+  event.run("private-order-c","ready",end,"private-staff");
+  db.close();
+  const before=readFileSync(file);
+  const r=reportCounter(file,"2026-11-14","2026-11-15");
+  assert.equal(r.createdOrders,3);assert.equal(r.createdCohortAwaitingAtClose,2);
+  assert.equal(r.paymentAcknowledgements,2);assert.equal(r.acknowledgedOrderValueMinor,17000);
+  assert.equal(r.issuedOrders,1);assert.equal(r.paidToReadySample,1);assert.equal(r.averagePaidToReadyMs,60000);
+  assert.equal(r.actualRevenueVerified,false);assert.equal(r.profitAvailable,false);
+  assert.ok(!JSON.stringify(r).includes("private-"));
+  assert.deepEqual(readFileSync(file),before);
+  assert.throws(()=>reportCounter(file,"2026-02-30","2026-03-01"));
+  assert.throws(()=>reportCounter(file,"2026-11-14","2026-11-14"));
+  assert.throws(()=>reportCounter(join(dir,"missing.sqlite"),"2026-11-14","2026-11-15"));
+  const empty=join(dir,"wrong.sqlite");new DatabaseSync(empty).close();
+  assert.throws(()=>reportCounter(empty,"2026-11-14","2026-11-15"));
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

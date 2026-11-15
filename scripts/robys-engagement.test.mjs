@@ -1,0 +1,34 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {classifyEntry,campaignLink,createSession,summarize} from "./robys-engagement.mjs";
+const product="hot-coffee:caffe-latte",catalogIds=[product],base="https://safal207.github.io/robys-coffee-house-demo/menu-feed.html";
+test("bounded attribution, no raw referrer or arbitrary campaign",()=>{
+ const link=campaignLink({source:"instagram",campaign:"story",productId:product,language:"ru"});
+ assert.equal(new URL(link).searchParams.get("item"),product);
+ assert.deepEqual(classifyEntry(link),{source:"instagram",medium:"social",campaign:"story"});
+ assert.equal(classifyEntry(base,"https://instagram.com.evil.example/private?email=x").source,"other_referral");
+ assert.equal(classifyEntry(base+"?utm_source=instagram&utm_medium=social&utm_campaign=phone-number").source,"unknown");
+ assert.equal(classifyEntry(base,"").source,"unknown");
+ assert.throws(()=>campaignLink({source:"instagram",campaign:"anything"}));
+});
+test("explicit opt-in, dedupe, local hour, aggregate without identifiers",()=>{
+ const config={sessionId:"a".repeat(32),href:campaignLink({source:"table_qr",campaign:"table"}),catalogIds,clock:()=>"2026-11-14T21:00:00.000Z"};
+ assert.equal(createSession({...config,consent:false}),null);
+ const s=createSession({...config,consent:true});
+ assert.equal(s.record("product_view",product),true);
+ assert.equal(s.record("product_view",product),false);
+ assert.equal(s.record("product_like",product),true);
+ assert.equal(s.record("share_intent",product),true);
+ assert.equal(s.record("cart_add",product),true);
+ assert.equal(s.record("area_click",null,"cart"),true);
+ assert.equal(s.record("checkout_handoff"),true);
+ assert.equal(s.record("product_like","fake:product"),false);
+ const e=s.export(),r=summarize([...e,...e],catalogIds);
+ assert.equal(r.sessions,1);assert.equal(r.hours[0].sessions,1);
+ assert.equal(r.channels[0].handoffSessions,1);assert.equal(r.products[0].viewSessions,1);assert.equal(r.products[0].shareCompletedSessions,0);assert.equal(r.areaClicks.cart,1);
+ assert.equal(r.actualRevenueVerified,false);assert.ok(!JSON.stringify(r).includes(config.sessionId));
+ assert.throws(()=>summarize([...e,{...e[0],language:"en"}],catalogIds));
+ assert.throws(()=>summarize([{...e[0],phone:"123"}],catalogIds));
+ assert.throws(()=>summarize(e.slice(1),catalogIds));
+ s.withdraw();assert.equal(s.export().length,0);assert.equal(s.record("route_click"),false);
+});

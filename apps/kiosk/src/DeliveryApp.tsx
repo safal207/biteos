@@ -822,6 +822,7 @@ export function DeliveryApp() {
           <a href="#kiosk">
             Открыть меню на табло <ArrowRight size={15} />
           </a>
+          <a href="#workspace">BiteOS Workspace <ArrowRight size={15} /></a>
         </div>
       </aside>
 

@@ -1,0 +1,82 @@
+[
+  {
+    "version": 1,
+    "tenantId": "robys",
+    "currency": "TRY",
+    "costs": [
+      {
+        "ingredientId": "espresso",
+        "unit": "g",
+        "packQuantity": 1000,
+        "packCost": 100000
+      },
+      {
+        "ingredientId": "milk",
+        "unit": "ml",
+        "packQuantity": 1000,
+        "packCost": 7000
+      },
+      {
+        "ingredientId": "oat-drink",
+        "unit": "ml",
+        "packQuantity": 1000,
+        "packCost": 10000
+      }
+    ],
+    "recipes": [
+      {
+        "itemId": "latte",
+        "portions": [
+          {
+            "variantId": "regular",
+            "components": [
+              {
+                "ingredientId": "espresso",
+                "quantity": 18
+              },
+              {
+                "ingredientId": "milk",
+                "quantity": 200
+              }
+            ]
+          },
+          {
+            "variantId": "large",
+            "components": [
+              {
+                "ingredientId": "espresso",
+                "quantity": 18
+              },
+              {
+                "ingredientId": "milk",
+                "quantity": 300
+              }
+            ]
+          }
+        ],
+        "options": [
+          {
+            "groupId": "extras",
+            "optionId": "extra-shot",
+            "components": [
+              {
+                "ingredientId": "espresso",
+                "quantity": 18
+              }
+            ]
+          },
+          {
+            "groupId": "extras",
+            "optionId": "oat-drink",
+            "components": [
+              {
+                "ingredientId": "oat-drink",
+                "quantity": 50
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

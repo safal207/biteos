@@ -1,0 +1,85 @@
+import {useState} from "react";
+import {productPreferences,brandDecision} from "./robysBrandAgent";
+import {readMemory} from "./robysMemory";
+import type {Memory} from "./robysMemory";
+import {robysCatalog} from "./robysPublicCatalog";
+import {moods,moodInfo,readMood,sharedLook,experience,addDiscovery,chooseSeason,storyCard,seasonalLooks} from "./robysAdaptive";
+import type {Mood,Lang,Discovery} from "./robysAdaptive";
+import {projectContext} from "./robysContext";
+import {RobysSocialLook} from "./RobysSocialLook";
+import {RobysMemoryPanel} from "./RobysMemoryPanel";
+import {readLayout,layoutLink} from "./robysSocialLook";
+import type {Layout} from "./robysSocialLook";
+import {palettes,styleKey,defaultStyle,loadStyle,styleFromLink,shareStyle} from "./robysStyle";
+import type {Style,Palette,Density} from "./robysStyle";
+import type {CSSProperties} from "react";
+import "./retail.css";
+import "./retail-finance.css";
+import "./robys-growth.css";
+import "./robys-adaptive.css";
+const catalog=robysCatalog.products,index=new Map(catalog.map(p=>[p.id,p]));
+const menu="https://safal207.github.io/robys-coffee-house-demo/menu-feed.html";
+const words={
+ tr:{draft:"Etkileşimli örnek · sipariş, puan veya ödül oluşturmaz.",mood:"Bugün nasıl bir mola?",context:"Hava senaryosu",offer:"Birlikte iyi gider",add:"Yanına eklemeyi önizle",remove:"Ek ürünü kaldır",base:"Menü fiyatı",total:"Örnek toplam",all:"Tüm menüyü aç",progress:"Lezzet keşifleri",discover:"Keşfi önizle",share:"Bu görünümü paylaş",copy:"Bağlantıyı kopyala",noOffer:"Öneri yok; normal menü her zaman erişilebilir.",story:"Her mola küçük bir hikâye.",hint:"Bağlantı yalnızca genel görünüm kodlarını taşır. Geçmiş, bütçe, ilerleme veya kimlik paylaşılmaz.",names:["Hikâye","Menü","Lezzet"]},
+ ru:{draft:"Интерактивный пример · не создаёт заказов, баллов или наград.",mood:"Какой отдых сегодня?",context:"Сценарий погоды",offer:"Хорошо сочетается",add:"Посмотреть с дополнением",remove:"Убрать дополнение",base:"Цена меню",total:"Пример суммы",all:"Открыть всё меню",progress:"Открытия вкусов",discover:"Отметить пробное открытие",share:"Поделиться оформлением",copy:"Копировать ссылку",noOffer:"Нет предложения; обычное меню всегда доступно.",story:"Каждая пауза — маленькая история.",hint:"Ссылка передаёт только публичные настройки оформления. История, бюджет, прогресс и личность не передаются.",names:["История","Меню","Вкус"]},
+ en:{draft:"Interactive example · no orders, points or rewards created.",mood:"What kind of break today?",context:"Weather scenario",offer:"Pairs well with",add:"Preview with add-on",remove:"Remove add-on",base:"Menu price",total:"Example total",all:"Open full menu",progress:"Taste discoveries",discover:"Preview discovery",share:"Share this look",copy:"Copy link",noOffer:"No offer; the standard menu remains accessible.",story:"Every break is a little story.",hint:"Only public appearance codes are shared. No history, budget, progress or identity.",names:["Story","Menu","Taste"]}
+};
+const styleLabels={tr:{title:"Kendi Roby’s görünümünü oluştur",palette:"Renk",density:"Kart düzeni",airy:"Geniş",compact:"Kompakt",discover:"Keşifleri göster",remember:"Bu cihazda görünümü kaydet",forget:"Kayıtlı görünümü sil",reset:"Varsayılan görünüm",saved:"Görünüm kaydedildi.",cleared:"Kayıtlı görünüm silindi.",failed:"Cihaz depolaması kullanılamıyor.",note:"Yalnızca üç görünüm ayarı saklanır; etkinlik geçmişi saklanmaz."},ru:{title:"Создай свой Roby’s",palette:"Палитра",density:"Плотность карточек",airy:"Свободно",compact:"Компактно",discover:"Показывать открытия",remember:"Сохранить оформление на устройстве",forget:"Удалить сохранённое оформление",reset:"Оформление по умолчанию",saved:"Оформление сохранено.",cleared:"Сохранённое оформление удалено.",failed:"Хранилище устройства недоступно.",note:"Сохраняются только три настройки внешнего вида, без истории действий."},en:{title:"Create your Roby’s",palette:"Palette",density:"Card density",airy:"Airy",compact:"Compact",discover:"Show discoveries",remember:"Save appearance on this device",forget:"Forget saved appearance",reset:"Default appearance",saved:"Appearance saved.",cleared:"Saved appearance removed.",failed:"Device storage unavailable.",note:"Only three appearance settings are stored; no activity history."}};
+function initialStyle(){const linked=styleFromLink(location.href);if(linked)return linked;try{return loadStyle(localStorage.getItem(styleKey))??defaultStyle()}catch{return defaultStyle()}}
+export function RobysAdaptiveExperience(){
+ const [lang,setLang]=useState<Lang>("tr"),[mood,setMood]=useState<Mood>(()=>readMood(new URL(location.href).searchParams.get("robysMood"))),[weather,setWeather]=useState<"unknown"|"rain"|"hot"|"storm">("unknown"),[addon,setAddon]=useState(false),[progress,setProgress]=useState<Discovery[]>([]),[day,setDay]=useState("2026-11-14"),[hour,setHour]=useState(15),[seasonal,setSeasonal]=useState(false),[saved,setSaved]=useState(false),[layout,setLayout]=useState<Layout>(()=>readLayout(new URL(location.href).searchParams.get("robysLayout"))),[style,setStyle]=useState<Style>(initialStyle),[styleStatus,setStyleStatus]=useState<"saved"|"cleared"|"failed"|null>(null),[memory,setMemory]=useState<Memory|null>(null),[budget,setBudget]=useState<number|null>(null),[unavailable,setUnavailable]=useState("");
+ const t=words[lang],i=["tr","ru","en"].indexOf(lang),money=(n:number)=>new Intl.NumberFormat(lang,{style:"currency",currency:"TRY"}).format(n/100);
+ // The existing context engine is the safety/availability boundary for this simulation.
+
+ const ids=catalog.map(p=>p.id);
+ const activeMemory=memory?readMemory(JSON.stringify(memory),Date.now(),ids):null;
+ const prefs=productPreferences(activeMemory?.events??[],ids),excluded=[...prefs.avoided,...(unavailable?[unavailable]:[])];
+ const sharedVisit=new URL(location.href).searchParams.has("robysMood");
+ // A shared look never contains preference records. Device memory stays local; the guest can clear it.
+ let context:ReturnType<typeof projectContext>|null=null;
+ try{context=projectContext({day,hour,weather,intent:mood==="study"||mood==="family"||mood==="friends"?mood:mood==="cozy"?"quiet":"any",budgetMinor:budget,favoriteIds:prefs.favorites,unavailableIds:excluded,optionalThemes:seasonal},catalog)}catch{}
+ const decision=brandDecision({blocked:!context||context.blocked,budgetMinor:budget===null||Number.isSafeInteger(budget)&&budget>=0?budget:null,ranked:context?.items??[],catalog,avoided:prefs.avoided,unavailable:unavailable?[unavailable]:[],basis:prefs.basis});
+ const offer=decision.offer;
+ const agentLabels=[
+ {title:"Roby’s akıllı asistanı",budget:"Üst bütçe (TRY)",stock:"Mevcut olmayan ürün senaryosu",none:"Öneri yok.",basis:"Hafıza kaydı",why:"Neden",note:"Taslak öneri; gerçek stok, hava ve satış doğrulanmadı.",open:"Menüde incele",shared:"Paylaşılan görünüm; hafıza yalnızca bu cihazda."},
+ {title:"Умный агент Roby’s",budget:"Лимит бюджета (TRY)",stock:"Недоступное блюдо (сценарий)",none:"Нет подходящего предложения.",basis:"Запись памяти",why:"Почему",note:"Черновик: реальные остатки, погода и продажи не подтверждены.",open:"Посмотреть в меню",shared:"Общий стиль из ссылки; память остаётся на устройстве."},
+ {title:"Roby’s smart agent",budget:"Agent budget (TRY)",stock:"Unavailable item scenario",none:"No eligible suggestion.",basis:"Memory record",why:"Why",note:"Draft suggestion; actual stock, weather and sales are not verified.",open:"Inspect suggested item",shared:"Shared look; memory stays on this device."}
+ ][i];
+ const reasons:Record<string,string[]>={hot:["Serin seçenek","Освежиться","Cooling choice"],warm:["Sıcak seçenek","Согреться","Warm choice"],morning:["Sabah","Утро","Morning"],evening:["Akşam","Вечер","Evening"],calendar:["Takvim","Календарь","Calendar"],family:["Aile","Семья","Family"],study:["Ders molası","Учебная пауза","Study break"],friends:["Birlikte","Друзья","Together"],quick:["Hızlı mola","Перекус","Quick break"],quiet:["Sakin mola","Тихий отдых","Quiet break"],favorite:["Açık tercih","Явное предпочтение","Explicit preference"],occasion:["Özel gün","Праздничный контекст","Occasion"]};
+ // A guest's explicit look remains theirs. Context does not silently replace it.
+ const model=experience(mood,catalog,budget===null||Number.isSafeInteger(budget)&&budget>=0?budget:null,excluded,!context||context.blocked);
+ const season=chooseSeason(model.theme,context?.calendar.occasions??[],seasonal,!context||context.blocked);
+ const baseCard=storyCard(model.theme,lang,season),custom=palettes[style.palette].colors;
+ const card={...baseCard,colors:custom?[custom[0],custom[1],custom[2]] as const:baseCard.colors};
+ const variables=custom?{"--hero":custom[0],"--light":custom[1],"--accent":custom[2],"--paper":custom[3]} as CSSProperties:undefined;
+ const primary=model.primary,extra=model.extra,share=shareStyle(layoutLink(sharedLook(location.href,model.theme),layout),style);
+ const s=styleLabels[lang];
+ function editStyle(next:Style){setStyle(next);setStyleStatus(null);setSaved(false)}
+ function remember(){try{localStorage.setItem(styleKey,JSON.stringify(style));setStyleStatus("saved")}catch{setStyleStatus("failed")}}
+ function forget(){try{localStorage.removeItem(styleKey);setStyleStatus("cleared")}catch{setStyleStatus("failed")}}
+
+ const existingPic=(id:string)=>id==="refreshers:cool-lime"?"refreshers--cool-lime":null;
+ const photo=(id:string)=>existingPic(id)?import.meta.env.BASE_URL+"images/robys/menu-v1/"+existingPic(id)+".webp":null;
+ function downloadStory(){
+  const c=document.createElement("canvas");c.width=1080;c.height=1920;const ctx=c.getContext("2d");if(!ctx)return;
+  const [background,foreground,accent]=card.colors;ctx.fillStyle=background;ctx.fillRect(0,0,1080,1920);
+  ctx.strokeStyle=accent;ctx.lineWidth=4;ctx.strokeRect(60,60,960,1800);
+  ctx.globalAlpha=.28;ctx.strokeStyle=accent;ctx.lineWidth=7;for(const radius of [230,300,370]){ctx.beginPath();ctx.arc(540,850,radius,0,Math.PI*2);ctx.stroke()}
+  ctx.globalAlpha=1;ctx.textAlign="center";ctx.fillStyle=foreground;ctx.font="46px system-ui";ctx.fillText(card.brand,540,240,900);
+  ctx.font="bold 260px Georgia";ctx.fillText("R.",540,930,850);
+  ctx.font="bold 62px system-ui";ctx.fillText(card.title,540,1360,920);ctx.font="44px system-ui";ctx.fillText(card.subtitle,540,1440,900);
+  ctx.font="27px system-ui";ctx.fillText(card.footer,540,1710,920);
+  c.toBlob(blob=>{if(!blob)return;const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download="my-robys-"+model.theme+".png";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);setSaved(true)},"image/png");
+ }
+
+ return <main className="retail finance robys-growth robys-experience" lang={lang}><header><a href="#workspace">← BiteOS</a><strong>ROBY’S</strong><select aria-label="Language" value={lang} onChange={e=>{setLang(e.target.value as Lang);setSaved(false)}}>{["tr","ru","en"].map(l=><option key={l}>{l}</option>)}</select></header>
+ <h1>My Roby’s</h1><p>{t.draft}</p><section className="retail-cart"><h2>{t.mood}</h2><div className="adaptive-moods">{moods.map(m=><button key={m} aria-pressed={mood===m} onClick={()=>{setMood(m);setAddon(false);setSaved(false)}}>{moodInfo[m].names[i]}</button>)}</div><label>{t.context}<select value={weather} onChange={e=>{setWeather(e.target.value as typeof weather);setAddon(false);setSaved(false)}}>{["unknown","rain","hot","storm"].map((w,j)=><option key={w} value={w}>{[["Bilinmiyor","Yağmur","Sıcak","Fırtına"],["Неизвестно","Дождь","Жара","Шторм"],["Unknown","Rain","Hot","Storm"]][i][j]}</option>)}</select></label><div className="adaptive-context-fields"><label>{["Tarih","Дата","Scenario date"][i]}<input type="date" value={day} onChange={e=>{setDay(e.target.value);setAddon(false);setSaved(false)}}/></label><label>{["Saat","Час","Scenario hour"][i]}<input type="number" min={0} max={23} value={Number.isNaN(hour)?"":hour} onChange={e=>{setHour(e.target.valueAsNumber);setAddon(false);setSaved(false)}}/></label></div><label><input type="checkbox" checked={seasonal} onChange={e=>{setSeasonal(e.target.checked);setSaved(false)}}/>{["İsteğe bağlı bayram temaları","Необязательные праздничные темы","Optional holiday themes"][i]}</label></section>
+ <section className="retail-cart adaptive-builder"><h2>{s.title}</h2><label>{s.palette}<select aria-label={s.palette} value={style.palette} onChange={e=>editStyle({...style,palette:e.target.value as Palette})}>{Object.entries(palettes).map(([id,p])=><option key={id} value={id}>{p.names[i]}</option>)}</select></label><div className="appearance-swatches" aria-hidden="true">{(custom??["#493124","#fff4df","#b58966","#f7eee2"]).map((c,j)=><span key={j} style={{background:c}}/>)}</div><label>{s.density}<select aria-label={s.density} value={style.density} onChange={e=>editStyle({...style,density:e.target.value as Density})}><option value="airy">{s.airy}</option><option value="compact">{s.compact}</option></select></label><label><input type="checkbox" checked={style.discoveries} onChange={e=>editStyle({...style,discoveries:e.target.checked})}/>{s.discover}</label><div className="appearance-actions"><button onClick={remember}>{s.remember}</button><button onClick={forget}>{s.forget}</button><button onClick={()=>editStyle(defaultStyle())}>{s.reset}</button></div>{styleStatus&&<p role="status">{s[styleStatus]}</p>}<p>{s.note}</p></section>
+ <section className="adaptive-screen" data-robys-mood={model.theme} data-robys-season={season??"none"} data-robys-palette={style.palette} data-robys-density={style.density} style={variables}><div className="adaptive-hero"><small>ROBY’S • MY MOMENT</small><h2>{moodInfo[model.theme].titles[i]}</h2><p>{t.story}</p>{season&&<p className="adaptive-season-label">{seasonalLooks[season].names[i]}</p>}<div className="adaptive-orbit" aria-hidden="true">R.</div></div>
+ {primary?<section className="adaptive-offer">{photo(primary.id)&&<img alt="" src={photo(primary.id)??undefined}/>}<h3>{index.get(primary.id)?.name[lang]}</h3><p>{t.base}: <b>{money(primary.priceMinor)}</b></p>{extra&&<div className="adaptive-extra"><strong>{t.offer}: {index.get(extra.id)?.name[lang]} · {money(extra.priceMinor)}</strong><button aria-pressed={addon} onClick={()=>setAddon(x=>!x)}>{addon?t.remove:t.add}</button></div>}<p>{t.total}: <b>{money(primary.priceMinor+(addon&&extra?extra.priceMinor:0))}</b></p></section>:<p>{t.noOffer}</p>}
+ <a className="adaptive-full-menu" href={menu+"?lang="+lang}>{t.all}</a>
+ {style.discoveries&&model.theme!=="standard"&&<section className="adaptive-progress"><h3>{t.progress}</h3><strong>{progress.length} / 3</strong><div className="growth-track"><i style={{width:progress.length/3*100+"%"}}/></div><div className="adaptive-discoveries">{t.names.map((n,j)=><span key={n}>{progress.includes((["story","menu","taste"] as const)[j])?"✓ ":""}{n}</span>)}</div><button disabled={progress.length===3} onClick={()=>{const next=(["story","menu","taste"] as const).find(x=>!progress.includes(x));if(next)setProgress(old=>addDiscovery(old,next))}}>{t.discover}</button></section>}</section>
+ <section className="retail-cart adaptive-memory" data-agent-action={decision.action}><h2>{agentLabels.title}</h2><label>{agentLabels.budget}<input type="number" min={0} step={1} value={budget===null||Number.isNaN(budget)?"":budget/100} onChange={e=>{setBudget(e.target.value===""?null:Math.round(e.target.valueAsNumber*100));setAddon(false)}}/></label><label>{agentLabels.stock}<select value={unavailable} onChange={e=>{setUnavailable(e.target.value);setAddon(false)}}><option value="">—</option>{catalog.map(p=><option key={p.id} value={p.id}>{p.name[lang]}</option>)}</select></label>
+ {offer?<article data-agent-product={offer.productId}><h3>{index.get(offer.productId)?.name[lang]}</h3><p>{money(offer.priceMinor)}</p><p>{agentLabels.why}: {offer.reasons.map(k=>reasons[k]?.[i]??k).join(" · ")}</p>{offer.memoryBasis!==null&&<p data-agent-basis={offer.memoryBasis}>{agentLabels.basis} #{offer.memoryBasis}</p>}<a href={menu+"?lang="+lang+"&item="+encodeURIComponent(offer.productId)}>{agentLabels.open}</a></article>:<p>{agentLabels.none}</p>}<p>{agentLabels.note}</p>{sharedVisit&&<p>{agentLabels.shared}</p>}</section>
+ <RobysSocialLook lang={lang} layout={layout} onLayout={setLayout} density={style.density}/><RobysMemoryPanel lang={lang} layout={layout} onLayout={setLayout} onMemory={setMemory}/><section className="retail-cart"><label>{t.share}<textarea readOnly rows={3} value={share}/></label><button onClick={()=>{void navigator.clipboard?.writeText(share).catch(()=>{})}}>{t.copy}</button><p>{t.hint}</p><div className="adaptive-story-card" style={{background:card.colors[0],color:card.colors[1],borderColor:card.colors[2]}}><small>{card.brand}</small><span aria-hidden="true">R.</span><strong>{card.title}</strong><p>{card.subtitle}</p></div><button onClick={downloadStory}>{["Hikâye PNG indir","Скачать историю PNG","Download story PNG"][i]}</button>{saved&&<p role="status">{["PNG hazır","PNG создан","PNG created"][i]}</p>}</section></main>
+}

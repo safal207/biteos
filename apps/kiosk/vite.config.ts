@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { "/api": "http://127.0.0.1:8090" },
+    host: "127.0.0.1",
+    proxy: { "/api/tenants/": "http://127.0.0.1:8092", "/api": "http://127.0.0.1:8090" },
   },
 }));
