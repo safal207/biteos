@@ -1,0 +1,50 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {livingOffer} from "../src/robysLivingOffers.ts";
+import {freshMemory,addMemory} from "../src/robysMemory.ts";
+import {demoOperations} from "../src/robysOperations.ts";
+import {demoCosts,financialReview} from "../src/robysFinancial.ts";
+import {robysCatalog} from "../src/robysPublicCatalog.ts";
+const now=Date.parse("2026-11-16T12:00:00Z"),day="2026-11-16",id="hot-coffee:flat-white";
+const ids=robysCatalog.products.map(p=>p.id),revision=robysCatalog.sourceRevision;
+const memory=addMemory(freshMemory(now),now,ids,"product",id,"prefer");
+const read=()=>JSON.stringify(memory);
+const request={schema:"robys.sounds-advice.v1",catalogRevision:revision,usePreferences:true,moment:"focus",favoriteIds:[id],avoidIds:[],unavailableIds:[],day,hour:15,weather:"rain",budgetMinor:null};
+const initial=demoOperations(revision,20);
+const plan={...initial,day,lots:initial.lots.map(l=>({...l,useBy:"2026-12-01",quantity:10000}))};
+const costs=demoCosts(plan);
+const policy={minMarginPct:20,discountPct:0,campaignMinor:0,maxCampaignMinor:10000};
+const run=(p=plan,c=costs,g=policy,r=request)=>livingOffer(r,read,now,p,c,g);
+test("candidate is reviewed only with canonical prices and recomputed cost scenario",()=>{
+ const p={...policy,discountPct:10,campaignMinor:1000};
+ const r=run(plan,costs,p);
+ const finance=financialReview(plan,costs,robysCatalog.products,10,1000,20);
+ const row=finance.rows.find(x=>x.productId===id);
+ assert.equal(r.status,"review-only");assert.equal(r.candidate.productId,id);
+ assert.equal(r.candidate.catalogPriceMinor,robysCatalog.products.find(x=>x.id===id).priceMinor);
+ assert.equal(r.candidate.scenarioContributionMinor,row.promo.contributionMinor);
+ assert.equal(r.candidate.matchingUnits,Math.ceil((row.baseTotal+1000)/row.promo.contributionMinor));
+ assert.equal(r.candidate.portfolioScenarioDeltaMinor,finance.deltaMinor);
+ for(const k of ["actualRevenueVerified","netProfitAvailable","stockVerified","taxVerified","ownerApprovalVerified","priceChangeAuthorized","externalEffectsAuthorized","marketingAuthorized","productionReady"])assert.equal(r[k],false,k);
+});
+test("missing inputs, missing recipe, stock deficit and extra portion reserve block offers",()=>{
+ assert.equal(run(null).reason,"missing-operator-inputs");
+ assert.equal(run(plan,null).reason,"missing-operator-inputs");
+ const partial={...plan,lines:plan.lines.filter(x=>x.productId!==id)};
+ assert.equal(run(partial).reason,"missing-candidate-recipe-or-plan");
+ const short={...plan,lots:plan.lots.map(x=>({...x,quantity:0}))};
+ assert.equal(run(short).reason,"declared-plan-stock-gap");
+ // 40 planned portions use 720 g espresso, plus 180 g reserve.
+ const tight={...plan,lots:plan.lots.map(x=>x.ingredientId==="espresso"?{...x,quantity:900}:x)};
+ assert.equal(run(tight).reason,"insufficient-declared-headroom");
+});
+test("margin, spend cap, opt-out, budget and stale day fail closed",()=>{
+ assert.equal(run(plan,costs,{...policy,discountPct:90}).reason,"margin-floor");
+ assert.equal(run(plan,costs,{...policy,campaignMinor:10001}).reason,"campaign-budget-exceeded");
+ assert.equal(run(plan,costs,policy,{...request,budgetMinor:0}).reason,"no-eligible-recommendation");
+ assert.equal(run(plan,costs,policy,{...request,usePreferences:false,moment:null,favoriteIds:[]}).reason,"no-eligible-recommendation");
+ assert.equal(run(plan,costs,policy,{...request,day:"2026-11-17"}).reason,"stale-scenario-day");
+ assert.throws(()=>run({...plan,day:"2026-11-14"}));
+ assert.throws(()=>run(plan,{...costs,products:[]}));
+ assert.throws(()=>run(plan,costs,{...policy,discountPct:91}));
+});
