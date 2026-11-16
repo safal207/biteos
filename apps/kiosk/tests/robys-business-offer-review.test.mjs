@@ -1,4 +1,5 @@
 import {test} from "node:test";
+import {decisionTrace} from "../src/robysDecisionTrace.ts";
 import assert from "node:assert/strict";
 import {businessOfferReview} from "../src/robysBusinessOfferReview.ts";
 import {demoBusiness} from "../src/robysBusinessBrain.ts";
@@ -27,4 +28,47 @@ test("campaign cap and missing product plan prevent review candidate; no data in
  const noPlan=businessOfferReview({...raw,productId:"hot-coffee:espresso"},now);
  assert.equal(noPlan.state,"hold");assert.equal(noPlan.reason,"missing-candidate-recipe-or-plan");
  for(const patch of [{guestId:"x"},{memory:[]},{productId:"fake:sku"},{minMarginPct:19},{business:{...raw.business,phone:"x"}},{business:{...raw.business,day:"2026-11-13"}}])assert.throws(()=>businessOfferReview({...raw,...patch},now));
+});
+
+test("decision trace is deterministic, scoped, and reuses owner review",()=>{
+ const raw=fixture(), review=businessOfferReview(raw,now),trace=decisionTrace(raw,now);
+ assert.deepEqual(trace,decisionTrace(structuredClone(raw),now));
+ assert.equal(trace.tenantId,"robys");
+ assert.equal(trace.catalogRevision,revision);
+ assert.equal(trace.decisionTimeUtc,new Date(now).toISOString());
+ assert.equal(trace.scenarioDay,day);
+ assert.equal(trace.state,review.state);
+ assert.deepEqual(trace.tasks,review.tasks);
+ assert.deepEqual(trace.candidate,review.candidate);
+ assert.equal(trace.graph.nodes.find(n=>n.id==="offer-gate").status,"review-only");
+ assert.deepEqual(trace.graph.edges.at(-1),{from:"offer-gate",to:"disposition",relation:"disposition"});
+ for(const k of ["sourceIndependentlyVerified","rolloutAuthorized","priceChangeAuthorized","externalEffectsAuthorized","marketingAuthorized","guestMemoryRead","actualRevenueVerified","netProfitAvailable","causalEffectEstablished","persisted"])assert.equal(trace[k],false,k);
+ assert.equal(trace.claim,"declared-inputs-computation-only");
+ for(const k of ["business","history","memory","guestId","plan","costs"])assert.equal(Object.hasOwn(trace,k),false,k);
+});
+test("trace records business gate short circuit, including missing evidence",()=>{
+ for(const [scenario,state] of [["compound","hold"],["missing","collect-evidence"]]){
+  const trace=decisionTrace({...fixture(),business:demoBusiness(revision,scenario)},now);
+  assert.equal(trace.state,state);
+  assert.equal(trace.reason,"business-gate");
+  assert.equal(trace.candidate,null);
+  assert.equal(trace.graph.nodes.some(n=>n.id==="offer-gate"),false);
+  assert.deepEqual(trace.graph.edges.at(-1),{from:"business-brain",to:"disposition",relation:"disposition"});
+  assert.equal(trace.graph.nodes.find(n=>n.id==="business-brain").status,state);
+ }
+});
+test("trace distinguishes later offer gate hold from business hold",()=>{
+ const raw=fixture(), trace=decisionTrace({...raw,maxCampaignMinor:0,business:{...raw.business,campaignMinor:100}},now);
+ assert.equal(trace.state,"hold");
+ assert.equal(trace.reason,"campaign-budget-exceeded");
+ assert.equal(trace.graph.nodes.find(n=>n.id==="business-brain").status,"review-only");
+ assert.equal(trace.graph.nodes.find(n=>n.id==="offer-gate").status,"hold");
+ assert.equal(trace.candidate,null);
+});
+test("trace rejects stale day and supplied decisions or guest fields",()=>{
+ for(const patch of [{state:"review-only"},{guestId:"x"},{memory:[]},{graph:{}},{rolloutAuthorized:true}]){
+  assert.throws(()=>decisionTrace({...fixture(),...patch},now));
+ }
+ assert.throws(()=>decisionTrace(fixture(),Date.parse("2026-11-14T21:00:00Z")));
+ assert.throws(()=>decisionTrace(fixture(),NaN));
 });
