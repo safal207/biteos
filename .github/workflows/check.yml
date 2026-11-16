@@ -58,3 +58,16 @@ jobs:
         env:
           ROBYS_CONTRACT_FILE: reviewed-robys/scripts/biteos-pilot-contract.mjs
         run: node --test scripts/robys-pilot-handoff.test.mjs
+      - uses: actions/checkout@v4
+        with:
+          repository: safal207/robys-coffee-house-demo
+          ref: 3d1f251ebf362009273b0c0c437f4076171b48de
+          path: reviewed-sounds
+          persist-credentials: false
+          sparse-checkout: |
+            docs/prototypes/coffee-club/sounds-model.mjs
+          sparse-checkout-cone-mode: false
+      - name: Verify reviewed Sounds mood adapter
+        env:
+          ROBYS_SOUNDS_MODEL: reviewed-sounds/docs/prototypes/coffee-club/sounds-model.mjs
+        run: node --test apps/kiosk/tests/robys-sounds-advice.test.mjs
