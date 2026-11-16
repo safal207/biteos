@@ -18,17 +18,25 @@ function policyOf(raw:unknown):Policy{
 export function livingOffer(request:unknown,readLocal:()=>string|null,now:number,rawPlan:unknown,rawCosts:unknown,rawPolicy:unknown){
  const policy=policyOf(rawPolicy);
  const recommendation=memorySoundsAdvice(request,readLocal,now);
+ return reviewCandidate(recommendation.offer?.productId??null,(request as Record<string,unknown>).day,now,rawPlan,rawCosts,policy);
+}
+// Owner can review a catalog SKU without any access to guest device memory.
+export function reviewOfferCandidate(productId:unknown,scenarioDay:unknown,now:number,rawPlan:unknown,rawCosts:unknown,rawPolicy:unknown){
+ if(typeof productId!=="string"||!ids.includes(productId))throw invalid();
+ return reviewCandidate(productId,scenarioDay,now,rawPlan,rawCosts,policyOf(rawPolicy));
+}
+function reviewCandidate(productId:string|null,scenarioDay:unknown,now:number,rawPlan:unknown,rawCosts:unknown,policy:Policy){
  const flags={actualRevenueVerified:false,netProfitAvailable:false,stockVerified:false,taxVerified:false,ownerApprovalVerified:false,priceChangeAuthorized:false,externalEffectsAuthorized:false,marketingAuthorized:false,productionReady:false};
  const hold=(reason:string)=>({status:"hold" as const,reason,candidate:null,...flags});
- if(!recommendation.offer)return hold("no-eligible-recommendation");
+ if(!productId)return hold("no-eligible-recommendation");
  if(policy.campaignMinor>policy.maxCampaignMinor)return hold("campaign-budget-exceeded");
  if(rawPlan==null||rawCosts==null)return hold("missing-operator-inputs");
  // Derive the current Istanbul calendar day from trusted caller time, not request date.
  if(!Number.isSafeInteger(now)||now<0||now>8640000000000000-10800000)throw invalid();
  const day=new Date(now+10800000).toISOString().slice(0,10);
- if((request as Record<string,unknown>).day!==day)return hold("stale-scenario-day");
+ if(scenarioDay!==day)return hold("stale-scenario-day");
  const plan=decodeOperations(rawPlan,day,robysCatalog.sourceRevision,ids);
- const line=plan.lines.find(x=>x.productId===recommendation.offer!.productId);
+ const line=plan.lines.find(x=>x.productId===productId);
  if(!line||line.plannedUnits<1)return hold("missing-candidate-recipe-or-plan");
  const operations=operationsPlan(plan,day,robysCatalog.sourceRevision,ids);
  // Preserve the full declared plan and reserves plus one incremental portion.
