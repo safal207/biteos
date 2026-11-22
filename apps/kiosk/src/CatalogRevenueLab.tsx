@@ -3,6 +3,7 @@ import { ChartNoAxesCombined, FileWarning, Search, ShieldAlert } from "lucide-re
 import { catalogFor, catalogSummary } from "./catalogIntelligence";
 import type { SourceCatalogItem } from "./catalogIntelligence";
 import { estimateScenario, validateScenario } from "./economics";
+import { OpportunityPlanner } from "./OpportunityPlanner";
 import type { Scenario } from "./economics";
 import "./catalogRevenue.css";
 
@@ -112,8 +113,11 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
         </>
       )}
 
+      <OpportunityPlanner businessId={businessId} onChooseAddOn={(minor) => {
+        update("addOnPrice", (minor / 100).toFixed(2));
+      }} />
       <div className="revenue-lab" aria-labelledby="revenue-lab-heading">
-        <div className="revenue-lab-title"><ChartNoAxesCombined size={21}/><div><span className="business-eyebrow">04 / REVENUE LAB</span><h2 id="revenue-lab-heading">Сценарий роста за период</h2></div></div>
+        <div className="revenue-lab-title"><ChartNoAxesCombined size={21}/><div><span className="business-eyebrow">05 / REVENUE LAB</span><h2 id="revenue-lab-heading">Сценарий роста за период</h2></div></div>
         <p>Для сценария можно взять цену из твоего рабочего меню кнопкой у товара или ввести её вручную. Заказы, доли допродаж, себестоимость и расходы задаются отдельно. Прогноз показывает дополнительный маржинальный вклад, <strong>не чистую прибыль</strong>.</p>
         <div className="revenue-fields">
           {([
