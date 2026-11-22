@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChartNoAxesCombined, FileWarning, Search, ShieldAlert } from "lucide-react";
 import { catalogFor, catalogSummary } from "./catalogIntelligence";
-import type { SourceCatalogItem } from "./catalogIntelligence";
+import type { SourceCatalog, SourceCatalogItem } from "./catalogIntelligence";
+import { parsePacelliMenu } from "./pacelliMenuImport";
 import { estimateScenario, validateScenario } from "./economics";
 import { OpportunityPlanner } from "./OpportunityPlanner";
 import type { Scenario } from "./economics";
@@ -36,7 +37,11 @@ function parseInputs(inputs: Inputs): Scenario | null {
 }
 
 export function CatalogRevenueLab({ businessId }: { businessId: string }) {
-  const catalog = useMemo(() => catalogFor(businessId), [businessId]);
+  const builtInCatalog = useMemo(() => catalogFor(businessId), [businessId]);
+  const [localPacelliMenu, setLocalPacelliMenu] = useState<SourceCatalog | null>(null);
+  const [csvCurrency, setCsvCurrency] = useState<"TRY" | "RUB">("TRY");
+  const [importError, setImportError] = useState("");
+  const catalog = businessId === "pacelli" && localPacelliMenu ? localPacelliMenu : builtInCatalog;
   const summary = catalogSummary(catalog);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -59,6 +64,21 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
     update("addOnPrice", (item.priceMinor / 100).toFixed(2));
   }
 
+  async function importPacelliFile(file: File | undefined) {
+    if (!file || businessId !== "pacelli") return;
+    setImportError("");
+    try {
+      if (file.size > 2_000_000) throw new Error("Файл больше 2 МБ.");
+      const parsed = parsePacelliMenu(await file.text(), file.name, csvCurrency);
+      setLocalPacelliMenu(parsed);
+      setQuery("");
+      setCategory("");
+      setLimit(12);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Не удалось прочитать меню.");
+    }
+  }
+
   return (
     <section className="catalog-lab" aria-labelledby="catalog-lab-heading">
       <div className="catalog-lab-heading">
@@ -66,8 +86,45 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
           <span className="business-eyebrow">03 / CATALOG INTELLIGENCE</span>
           <h2 id="catalog-lab-heading">Каталог и достоверность данных</h2>
         </div>
-        <span className="catalog-lab-status">{catalog.status === "pending-source" ? "Ждём исходное меню" : catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : catalog.status === "working-menu-snapshot" ? "Рабочее меню · твои данные" : "Демоверсия"}</span>
+        <span className="catalog-lab-status">{catalog.status === "pending-source" ? "Ждём исходное меню" : catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : catalog.status === "working-menu-snapshot" ? "Рабочее меню · локальные данные" : "Демоверсия"}</span>
       </div>
+      {businessId === "pacelli" && (
+        <div className="pacelli-import">
+          <h3>Добавить исходное меню Pacelli</h3>
+          <p>Загрузи свой JSON или CSV с товарами и ценами. Файл читается локально в этой вкладке: без отправки на сервер, записи в GitHub и изменения действующих витрин. После закрытия страницы данные исчезнут.</p>
+          <div className="pacelli-import-controls">
+            <label className="pacelli-import-file">
+              <span>Меню (.json или .csv; до 2 МБ)</span>
+              <input type="file" accept=".json,.csv,application/json,text/csv" onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                void importPacelliFile(file);
+                event.currentTarget.value = "";
+              }} />
+            </label>
+            <label className="pacelli-import-currency">
+              <span>Валюта CSV</span>
+              <select value={csvCurrency} onChange={(event) => setCsvCurrency(event.target.value as "TRY" | "RUB")}>
+                <option value="TRY">₺ · TRY</option>
+                <option value="RUB">₽ · RUB</option>
+              </select>
+            </label>
+          </div>
+          <p className="pacelli-import-example">CSV: <code>name;category;price</code>. Например, пустые цены разрешены. JSON: <code>{"{ businessId: \"pacelli\", currency: \"TRY\", items: [...] }"}</code>. Значения в файле должны принадлежать Pacelli.</p>
+          {importError && <p className="revenue-error" role="alert">Ошибка импорта: {importError}</p>}
+          {localPacelliMenu && (
+            <div className="pacelli-import-success" role="status">
+              Прочитано {localPacelliMenu.items.length} позиций. Источник: {localPacelliMenu.source}. Данные пока не опубликованы.
+              <button type="button" onClick={() => {
+                setLocalPacelliMenu(null);
+                setImportError("");
+                setQuery("");
+                setCategory("");
+                setLimit(12);
+              }}>Сбросить локальное меню</button>
+            </div>
+          )}
+        </div>
+      )}
       <div className="catalog-metrics">
         <div><strong>{summary.total}</strong><span>позиций</span></div>
         <div><strong>{summary.categoryCount}</strong><span>категорий</span></div>
@@ -80,7 +137,7 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
       </p>
       <p className="catalog-warning"><ShieldAlert size={18} />
         {catalog.status === "working-menu-snapshot"
-          ? "Берём цены из меню, которое ты уже внёс, как рабочую основу для планирования. Ничего не переоцениваем и не заменяем. Цена товара может подставляться в сценарий по твоему выбору. Это не POS и не подтверждение фактических продаж."
+          ? "Используем введённые цены из исходного или локально загруженного меню для планирования. Ничего не переоцениваем и не заменяем. Это не POS и не подтверждение фактических продаж."
           : catalog.status === "pending-source"
             ? "Для Pacelli пока нет файла меню и цен. Можно заполнить анкету потребностей и задать гипотетические значения вручную; товары и суммы не выдумываем."
           : catalog.status === "no-approved-products"
@@ -115,7 +172,7 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
         </>
       )}
 
-      <OpportunityPlanner businessId={businessId} onChooseAddOn={(minor) => {
+      <OpportunityPlanner businessId={businessId} catalogOverride={businessId === "pacelli" ? catalog : undefined} onChooseAddOn={(minor) => {
         update("addOnPrice", (minor / 100).toFixed(2));
       }} />
       <div className="revenue-lab" aria-labelledby="revenue-lab-heading">
