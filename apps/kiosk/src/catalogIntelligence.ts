@@ -14,7 +14,7 @@ export type SourceCatalog = {
   sourceSha: string | null;
   capturedAt: string | null;
   currency: "TRY" | "RUB";
-  status: "unverified-source-snapshot" | "demo-only" | "no-approved-products" | "not-applicable";
+  status: "working-menu-snapshot" | "demo-only" | "no-approved-products" | "not-applicable";
   items: SourceCatalogItem[];
 };
 
@@ -25,7 +25,7 @@ function snapshot(source: typeof sefaSource): SourceCatalog {
     sourceSha: source.source.blobSha,
     capturedAt: source.source.snapshotAt,
     currency: "TRY",
-    status: "unverified-source-snapshot",
+    status: "working-menu-snapshot",
     items: source.items.map((item) => ({
       id: item.id,
       category: item.category,
