@@ -71,7 +71,7 @@ test("Reject duplicate product identifiers, invalid prices, zero and negative va
   assert.throws(() => parsePacelliMenu(payload([item("foo", -5)]), "x.json"), /Цена должна/);
   assert.throws(() => parsePacelliMenu(payload([item("foo", "150,123")]), "x.json"), /формат цены/);
   assert.throws(() => parsePacelliMenu(payload([item("foo", "1e4")]), "x.json"), /формат цены/);
-  assert.throws(() => parsePacelliMenu(payload([item("foo", Infinity)]), "x.json"), /неверная запись|Цена должна|формат цены|Цена должна быть числом/);
+  assert.throws(() => parsePacelliMenu(payload([item("foo", "Infinity")]), "x.json"), /формат цены/);
 });
 
 test("Reject missing file content, unsupported currency, malformed CSV and empty menus", () => {
