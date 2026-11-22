@@ -9,7 +9,7 @@ This first integration layer deliberately **links existing products without movi
 | MIORA Coffee | [miora-coffee](https://github.com/safal207/miora-coffee) | Read-only case registry and source link | Shared catalog, family-sales proof, actual order transfer |
 | Sefa Beach | [sefa-beach](https://github.com/safal207/sefa-beach) | Read-only case registry and link to QR-menu concept with 123 items, 3 languages, waiter-list basket and local revenue template | Five missing prices; all menu prices require owner approval; no POS or measured sales |
 | Riva Bella | [riva-bella-revenue](https://github.com/safal207/riva-bella-revenue) | Read-only case registry and link to public Revenue Lab with eight explicitly fictional demo products and illustrative economics | No shared official menu, synced prices, checkout, real profitability or publishing rights; separate 176-item concept is private |
-| AI Café Network | [ai-cafe-network](https://github.com/safal207/ai-cafe-network) | Read-only pilot registry and source link | Venue enrollment and measured pilot outcomes |
+| Pacelli (Пачелли) | Prior project discussions, no repository confirmed | Discovery-only record and questionnaire, no public link | No menu, prices, owner details or real business integration; do not populate items from other clients |\n| AI Café Network | [ai-cafe-network](https://github.com/safal207/ai-cafe-network) | Read-only pilot registry and source link | Venue enrollment and measured pilot outcomes |
 
 Private projects such as Zenit Alanya and the 176-item Riva Bella Gazipaşa concept are intentionally **not exposed** on the public Business Discovery page. Their use needs a separate access-controlled adapter and approval of brand/media rights.
 
