@@ -41,3 +41,7 @@
 .revenue-error{color:#a12c25!important;font-weight:800}
 .revenue-footnote{color:#8b8074!important;font-size:10px!important}
 @media(max-width:600px){.catalog-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.catalog-filter-row{flex-direction:column}.catalog-filter-row select{max-width:100%}.revenue-lab{padding:16px}.revenue-fields{grid-template-columns:1fr}.revenue-results{grid-template-columns:1fr}}
+
+.catalog-use-price{margin-top:4px;background:#fff0e2;color:#9a4b18;border:1px solid #ead2ba;border-radius:9px;padding:7px 9px;font-size:11px;cursor:pointer;font-weight:800}
+.catalog-use-price:hover{background:#fce0c2}
+.catalog-use-price:focus-visible{outline:3px solid #ef9d5a;outline-offset:2px}
