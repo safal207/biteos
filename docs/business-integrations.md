@@ -18,7 +18,7 @@ Users can select a case and enter a six-question discovery draft. The browser ke
 
 ## Read-only catalog adapter and profit scenarios
 
-See [Catalog Intelligence and Revenue Lab](catalog-intelligence.md). MIORA and Sefa now have source-provenanced read-only catalog snapshots, not owner-approved checkout data. Riva has zero approved products imported; the private Riva Gazipaşa concept remains excluded. The financial calculator uses manual hypothetical inputs, reports incremental contribution rather than net profit, and never substitutes unverified menu prices.
+See [Catalog Intelligence and Revenue Lab](catalog-intelligence.md). MIORA and Sefa now have source-provenanced read-only catalog snapshots, not owner-approved checkout data. Riva has zero approved products imported; the private Riva Gazipaşa concept remains excluded. The menu prices already entered by the user are treated as the **working planning baseline**; the user can explicitly pick a listed price as an input to the financial calculator. Remaining economic assumptions are manual. The simulator reports expected incremental contribution rather than net profit, and does not claim measured revenue or live POS integration.
 
 ## Next connection contract
 
