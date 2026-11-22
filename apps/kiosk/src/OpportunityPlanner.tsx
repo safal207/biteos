@@ -4,9 +4,9 @@ import { catalogFor } from "./catalogIntelligence";
 import type { SourceCatalog } from "./catalogIntelligence";
 import { opportunitiesFor, selectedPair } from "./opportunityHypotheses";
 
-const money = (minor: number) =>
-  new Intl.NumberFormat("tr-TR", {
-    style: "currency", currency: "TRY", maximumFractionDigits: 2,
+const money = (minor: number, currency: "TRY" | "RUB") =>
+  new Intl.NumberFormat(currency === "TRY" ? "tr-TR" : "ru-RU", {
+    style: "currency", currency, maximumFractionDigits: 2,
   }).format(minor / 100);
 
 export function OpportunityPlanner({
@@ -44,12 +44,12 @@ export function OpportunityPlanner({
             <span className="opportunity-tag">Гипотеза · не проверена</span>
             <h3>{opportunity.title}</h3>
             <div className="opportunity-items">
-              <span>{opportunity.main.name} <b>{money(opportunity.main.priceMinor!)}</b></span>
-              <span>+ {opportunity.addOn.name} <b>{money(opportunity.addOn.priceMinor!)}</b></span>
+              <span>{opportunity.main.name} <b>{money(opportunity.main.priceMinor!, catalog.currency)}</b></span>
+              <span>+ {opportunity.addOn.name} <b>{money(opportunity.addOn.priceMinor!, catalog.currency)}</b></span>
             </div>
             <div className="opportunity-total">
               <span>Вместе по ценам меню</span>
-              <strong>{money(opportunity.fullPriceMinor)}</strong>
+              <strong>{money(opportunity.fullPriceMinor, catalog.currency)}</strong>
             </div>
             <p><b>Потребность проверить:</b> {opportunity.needToTest}</p>
             <p><b>Метрика:</b> {opportunity.metric}</p>
@@ -75,22 +75,22 @@ export function OpportunityPlanner({
             <span>Основное блюдо или напиток</span>
             <select value={mainId} onChange={(event) => setMainId(event.target.value)}>
               <option value="">Выбрать позицию</option>
-              {priced.map((item) => <option key={item.id} value={item.id}>{item.name} · {money(item.priceMinor!)}</option>)}
+              {priced.map((item) => <option key={item.id} value={item.id}>{item.name} · {money(item.priceMinor!, catalog.currency)}</option>)}
             </select>
           </label>
           <label>
             <span>Дополнение</span>
             <select value={addOnId} onChange={(event) => setAddOnId(event.target.value)}>
               <option value="">Выбрать дополнение</option>
-              {priced.map((item) => <option key={item.id} value={item.id}>{item.name} · {money(item.priceMinor!)}</option>)}
+              {priced.map((item) => <option key={item.id} value={item.id}>{item.name} · {money(item.priceMinor!, catalog.currency)}</option>)}
             </select>
           </label>
         </div>
         {pair ? (
           <div className="opportunity-custom-result" aria-live="polite">
             <span>{pair.main.name} + {pair.addOn.name}</span>
-            <strong>{money(pair.fullPriceMinor)}</strong>
-            <small>Дополнение: {money(pair.incrementalPriceMinor)}. Цена пары без скидки; прибыль зависит от затрат и спроса.</small>
+            <strong>{money(pair.fullPriceMinor, catalog.currency)}</strong>
+            <small>Дополнение: {money(pair.incrementalPriceMinor, catalog.currency)}. Цена пары без скидки; прибыль зависит от затрат и спроса.</small>
             <button type="button" onClick={() => onChooseAddOn(pair.incrementalPriceMinor)}>
               Проверить дополнение в Revenue Lab <ArrowDownRight size={15} />
             </button>
