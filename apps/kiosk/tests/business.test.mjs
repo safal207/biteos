@@ -3,13 +3,25 @@ import assert from "node:assert/strict";
 import { businessCases, discoveryQuestions, discoveryExport } from "../src/businessRegistry.ts";
 
 test("BiteOS registry contains unique cases with safe entry points", () => {
-  assert.equal(businessCases.length, 4);
+  assert.equal(businessCases.length, 6);
   assert.equal(new Set(businessCases.map((item) => item.id)).size, businessCases.length);
   for (const item of businessCases) {
     assert.ok(item.name && item.sector && item.existing.length && item.unknown.length);
     assert.match(item.url, /^(#kiosk|https:\/\/github\.com\/safal207\/|https:\/\/safal207\.github\.io\/)/);
     assert.ok(!item.url.includes("zenit-alanya"), "private project must not be linked publicly");
   }
+});
+
+test("Sefa and Riva Bella have distinct public safe demos and unverified data notes", () => {
+  const sefa = businessCases.find((item) => item.id === "sefa-beach");
+  const riva = businessCases.find((item) => item.id === "riva-bella");
+  assert.equal(sefa?.url, "https://safal207.github.io/sefa-beach/");
+  assert.equal(riva?.url, "https://safal207.github.io/riva-bella-revenue/");
+  assert.match(sefa.summary, /требует проверки владельцем/);
+  assert.match(riva.summary, /вымышленных/);
+  assert.ok(!businessCases.some((item) => item.url.includes("riva-bella-gazipasa-concept")));
+  assert.equal(discoveryExport("sefa-beach", { need: "Проверить семейные запросы" }).businessId, "sefa-beach");
+  assert.equal(discoveryExport("riva-bella", { goal: "Проверить воронку" }).businessId, "riva-bella");
 });
 
 test("Discovery export keeps only the selected case and provided answers", () => {
