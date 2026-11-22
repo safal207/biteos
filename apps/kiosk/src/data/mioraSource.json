@@ -1,0 +1,572 @@
+{
+  "schema": "biteos.source-catalog.v1",
+  "businessId": "miora",
+  "source": {
+    "repository": "safal207/miora-coffee",
+    "path": "docs/source-menu-2026-11-05.json",
+    "blobSha": "d13b75d8870c1e05204c3efb4d796a70f950fea8",
+    "snapshotAt": "2026-11-05T19:20:55.297Z",
+    "verifiedByOwner": false
+  },
+  "currency": "TRY",
+  "items": [
+    {
+      "id": "428743",
+      "category": "Sıcak Kahveler",
+      "name": "Americano",
+      "priceMinor": 15000
+    },
+    {
+      "id": "428748",
+      "category": "Sıcak Kahveler",
+      "name": "Caffe Latte",
+      "priceMinor": 20000
+    },
+    {
+      "id": "428759",
+      "category": "Sıcak Kahveler",
+      "name": "Caffe Mocha",
+      "priceMinor": 21000
+    },
+    {
+      "id": "428772",
+      "category": "Sıcak Kahveler",
+      "name": "Cappuccino",
+      "priceMinor": 18000
+    },
+    {
+      "id": "428777",
+      "category": "Sıcak Kahveler",
+      "name": "Caramel Cappuccino",
+      "priceMinor": 21000
+    },
+    {
+      "id": "428787",
+      "category": "Sıcak Kahveler",
+      "name": "Caramel Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "428961",
+      "category": "Sıcak Kahveler",
+      "name": "Cortado",
+      "priceMinor": 15000
+    },
+    {
+      "id": "428974",
+      "category": "Sıcak Kahveler",
+      "name": "Espresso Single Shot",
+      "priceMinor": 7500
+    },
+    {
+      "id": "428976",
+      "category": "Sıcak Kahveler",
+      "name": "Espresso Double  Shot",
+      "priceMinor": 13000
+    },
+    {
+      "id": "428977",
+      "category": "Sıcak Kahveler",
+      "name": "Filtre Kahve",
+      "priceMinor": 17000
+    },
+    {
+      "id": "428979",
+      "category": "Sıcak Kahveler",
+      "name": "Flat White",
+      "priceMinor": 16000
+    },
+    {
+      "id": "428981",
+      "category": "Sıcak Kahveler",
+      "name": "Hazelnut Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "428985",
+      "category": "Sıcak Kahveler",
+      "name": "Lotus Macchiato",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429150",
+      "category": "Sıcak Kahveler",
+      "name": "Sütlü Filtre Kahve",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429151",
+      "category": "Sıcak Kahveler",
+      "name": "Vanilya Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429233",
+      "category": "Sıcak Kahveler",
+      "name": "White Chocolate Mocha",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429239",
+      "category": "Sıcak Kahveler",
+      "name": "Salted Caramel Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429243",
+      "category": "Sıcak Kahveler",
+      "name": "Caramel Macchiato",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429244",
+      "category": "Sıcak Kahveler",
+      "name": "Pumpkin Spice Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429301",
+      "category": "Sıcak Kahveler",
+      "name": "Matcha Latte",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429303",
+      "category": "Sıcak Kahveler",
+      "name": "Aromalı Matcha Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429252",
+      "category": "Soğuk Kahveler",
+      "name": "İce Americano",
+      "priceMinor": 17000
+    },
+    {
+      "id": "429264",
+      "category": "Soğuk Kahveler",
+      "name": "İce Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429271",
+      "category": "Soğuk Kahveler",
+      "name": "İce Mocha",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429277",
+      "category": "Soğuk Kahveler",
+      "name": "İce Salted Caramel Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429282",
+      "category": "Soğuk Kahveler",
+      "name": "İce Caramel Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429286",
+      "category": "Soğuk Kahveler",
+      "name": "İce Hazelnut Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429287",
+      "category": "Soğuk Kahveler",
+      "name": "İce Vanilya Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429293",
+      "category": "Soğuk Kahveler",
+      "name": "İce White Chocolate Mocha",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429294",
+      "category": "Soğuk Kahveler",
+      "name": "Cold Brew",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429390",
+      "category": "Sıcak İçecekler",
+      "name": "Çay",
+      "priceMinor": 5000
+    },
+    {
+      "id": "429391",
+      "category": "Sıcak İçecekler",
+      "name": "Double çay",
+      "priceMinor": 10000
+    },
+    {
+      "id": "429392",
+      "category": "Sıcak İçecekler",
+      "name": "Türk Kahvesi",
+      "priceMinor": 10000
+    },
+    {
+      "id": "429393",
+      "category": "Sıcak İçecekler",
+      "name": "Double Türk Kahvesi",
+      "priceMinor": 18000
+    },
+    {
+      "id": "429394",
+      "category": "Sıcak İçecekler",
+      "name": "Bitki Çayı",
+      "priceMinor": 14000
+    },
+    {
+      "id": "429400",
+      "category": "Sıcak İçecekler",
+      "name": "Sıcak Çikolata",
+      "priceMinor": 22500
+    },
+    {
+      "id": "429429",
+      "category": "Sıcak İçecekler",
+      "name": "Salep",
+      "priceMinor": 18000
+    },
+    {
+      "id": "429431",
+      "category": "Sıcak İçecekler",
+      "name": "Chai Tea Latte",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429436",
+      "category": "Soğuk İçecekler",
+      "name": "Berry Lime",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429441",
+      "category": "Soğuk İçecekler",
+      "name": "Cool Lime",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429442",
+      "category": "Soğuk İçecekler",
+      "name": "Limonata",
+      "priceMinor": 18000
+    },
+    {
+      "id": "429443",
+      "category": "Soğuk İçecekler",
+      "name": "Portakal Suyu",
+      "priceMinor": 18000
+    },
+    {
+      "id": "429446",
+      "category": "Soğuk İçecekler",
+      "name": "Çikolotalı Milkshake",
+      "priceMinor": 22500
+    },
+    {
+      "id": "429447",
+      "category": "Soğuk İçecekler",
+      "name": "Orman Meyveli Milkshake",
+      "priceMinor": 22500
+    },
+    {
+      "id": "429448",
+      "category": "Soğuk İçecekler",
+      "name": "İce Chai Tea Latte",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429449",
+      "category": "Soğuk İçecekler",
+      "name": "İce Forest Bery Matcha Latte",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429450",
+      "category": "Soğuk İçecekler",
+      "name": "İce Matcha Latre",
+      "priceMinor": 22000
+    },
+    {
+      "id": "431293",
+      "category": "Tatlılar",
+      "name": "2'li Hurma Topu",
+      "priceMinor": 7000
+    },
+    {
+      "id": "430222",
+      "category": "Tatlılar",
+      "name": "Antep Fıstıklı San Sebastian",
+      "priceMinor": 29000
+    },
+    {
+      "id": "430226",
+      "category": "Tatlılar",
+      "name": "San Sebastian",
+      "priceMinor": 25000
+    },
+    {
+      "id": "429826",
+      "category": "Tatlılar",
+      "name": "Fransız Beyaz Çikolatalı Cheescake",
+      "priceMinor": 25000
+    },
+    {
+      "id": "429828",
+      "category": "Tatlılar",
+      "name": "Çikolatalı Cheescake",
+      "priceMinor": 25000
+    },
+    {
+      "id": "429921",
+      "category": "Tatlılar",
+      "name": "Hindistan Cevizli Cheescake",
+      "priceMinor": 21000
+    },
+    {
+      "id": "429808",
+      "category": "Tatlılar",
+      "name": "Frambuazlı Cheesecake",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429822",
+      "category": "Tatlılar",
+      "name": "Oreolu Cheescake",
+      "priceMinor": 25000
+    },
+    {
+      "id": "431314",
+      "category": "Tatlılar",
+      "name": "Mini Cheescake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "430207",
+      "category": "Tatlılar",
+      "name": "Bromisu",
+      "priceMinor": 23000
+    },
+    {
+      "id": "429872",
+      "category": "Tatlılar",
+      "name": "Dubai Cup",
+      "priceMinor": 20000
+    },
+    {
+      "id": "430198",
+      "category": "Tatlılar",
+      "name": "Çilekli Magnolia",
+      "priceMinor": 20000
+    },
+    {
+      "id": "431299",
+      "category": "Tatlılar",
+      "name": "Bal Kabaklı Magnolia",
+      "priceMinor": 20000
+    },
+    {
+      "id": "430199",
+      "category": "Tatlılar",
+      "name": "Muzlu Magnolia",
+      "priceMinor": 20000
+    },
+    {
+      "id": "430227",
+      "category": "Tatlılar",
+      "name": "Browni Topu",
+      "priceMinor": 3000
+    },
+    {
+      "id": "430214",
+      "category": "Tatlılar",
+      "name": "Limonlu Tiramisu",
+      "priceMinor": 21000
+    },
+    {
+      "id": "431294",
+      "category": "Tatlılar",
+      "name": "Çikolatalı Muffin",
+      "priceMinor": 10000
+    },
+    {
+      "id": "430203",
+      "category": "Tatlılar",
+      "name": "Ekler",
+      "priceMinor": 12000
+    },
+    {
+      "id": "431336",
+      "category": "Tatlılar",
+      "name": "Antep Fıstıklı Ekler",
+      "priceMinor": 12000
+    },
+    {
+      "id": "431302",
+      "category": "Tatlılar",
+      "name": "Magnum Browni (Büyük)",
+      "priceMinor": null
+    },
+    {
+      "id": "431304",
+      "category": "Tatlılar",
+      "name": "Magnum Browni (Küçük)",
+      "priceMinor": 13000
+    },
+    {
+      "id": "429834",
+      "category": "Tatlılar",
+      "name": "Malaga Pasta",
+      "priceMinor": 20000
+    },
+    {
+      "id": "429833",
+      "category": "Tatlılar",
+      "name": "Meyveli Tart",
+      "priceMinor": 15000
+    },
+    {
+      "id": "431333",
+      "category": "Tatlılar",
+      "name": "Pankek Tabağı",
+      "priceMinor": null
+    },
+    {
+      "id": "431453",
+      "category": "Meşrubat",
+      "name": "Uludağ Premium Su",
+      "priceMinor": 4500
+    },
+    {
+      "id": "431455",
+      "category": "Meşrubat",
+      "name": "Beypazarı Soda",
+      "priceMinor": 6500
+    },
+    {
+      "id": "431456",
+      "category": "Meşrubat",
+      "name": "Uludağ Premium Mineralli Su",
+      "priceMinor": 8000
+    },
+    {
+      "id": "431458",
+      "category": "Meşrubat",
+      "name": "Pınar Kido Süt",
+      "priceMinor": 4000
+    },
+    {
+      "id": "431459",
+      "category": "Meşrubat",
+      "name": "Pınar Meyve Suyu",
+      "priceMinor": 4000
+    },
+    {
+      "id": "460119",
+      "category": "Smoothie & Fresh İçecek",
+      "name": "Fresh Tropic",
+      "priceMinor": 20000
+    },
+    {
+      "id": "460120",
+      "category": "Smoothie & Fresh İçecek",
+      "name": "Berry Mojito",
+      "priceMinor": 20000
+    },
+    {
+      "id": "430236",
+      "category": "Yiyecekler",
+      "name": "Ekşi Maya Sandviç - Tam Buğday Ekmek",
+      "priceMinor": 35000
+    },
+    {
+      "id": "430240",
+      "category": "Yiyecekler",
+      "name": "Ekşi Maya Sandviç - Zeytinli Kekikli Ekmek",
+      "priceMinor": 35000
+    },
+    {
+      "id": "430350",
+      "category": "Yiyecekler",
+      "name": "Tereyağlı Sade Kruvasan",
+      "priceMinor": 20000
+    },
+    {
+      "id": "430356",
+      "category": "Yiyecekler",
+      "name": "Sandviç Kruvasan",
+      "priceMinor": 35000
+    },
+    {
+      "id": "431177",
+      "category": "Yiyecekler",
+      "name": "Ekşi Maya Sandviç - Kuru Domatesli & Cevizli",
+      "priceMinor": 35000
+    },
+    {
+      "id": "431178",
+      "category": "Yiyecekler",
+      "name": "Ekşi Maya Sandviç - Sade Ekmek",
+      "priceMinor": 35000
+    },
+    {
+      "id": "431179",
+      "category": "Yiyecekler",
+      "name": "Ekşi Maya Sandviç - Focaccia Mor Ekmek",
+      "priceMinor": 35000
+    },
+    {
+      "id": "431203",
+      "category": "Yiyecekler",
+      "name": "Kahvaltı Tabağı",
+      "priceMinor": 45000
+    },
+    {
+      "id": "431742",
+      "category": "Yiyecekler",
+      "name": "Tuzlu Muffin",
+      "priceMinor": 10000
+    },
+    {
+      "id": "431744",
+      "category": "Yiyecekler",
+      "name": "Bademli Glutensiz Kek",
+      "priceMinor": 16000
+    },
+    {
+      "id": "431745",
+      "category": "Yiyecekler",
+      "name": "Cookie",
+      "priceMinor": 11000
+    },
+    {
+      "id": "431746",
+      "category": "Yiyecekler",
+      "name": "Cookie Glutensiz Yulaflı",
+      "priceMinor": 7000
+    },
+    {
+      "id": "431747",
+      "category": "Yiyecekler",
+      "name": "Muffin",
+      "priceMinor": 10000
+    },
+    {
+      "id": "431748",
+      "category": "Yiyecekler",
+      "name": "Glutensiz Poğaça",
+      "priceMinor": 8000
+    },
+    {
+      "id": "431749",
+      "category": "Yiyecekler",
+      "name": "Glutensiz Sebzeli Çörek",
+      "priceMinor": 8500
+    }
+  ]
+}
