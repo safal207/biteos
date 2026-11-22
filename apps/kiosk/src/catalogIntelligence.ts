@@ -14,7 +14,7 @@ export type SourceCatalog = {
   sourceSha: string | null;
   capturedAt: string | null;
   currency: "TRY" | "RUB";
-  status: "working-menu-snapshot" | "demo-only" | "no-approved-products" | "not-applicable";
+  status: "working-menu-snapshot" | "demo-only" | "no-approved-products" | "not-applicable" | "pending-source";
   items: SourceCatalogItem[];
 };
 
@@ -46,6 +46,17 @@ export function catalogFor(businessId: string): SourceCatalog {
       capturedAt: null,
       currency: "TRY",
       status: "no-approved-products",
+      items: [],
+    };
+  }
+  if (businessId === "pacelli") {
+    return {
+      businessId,
+      source: "Ожидается исходное меню от пользователя",
+      sourceSha: null,
+      capturedAt: null,
+      currency: "TRY",
+      status: "pending-source",
       items: [],
     };
   }
