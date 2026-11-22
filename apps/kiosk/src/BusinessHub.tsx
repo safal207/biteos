@@ -9,6 +9,7 @@ const connectionLabel = {
   native: "Уже в ядре",
   "linked-demo": "Связано ссылкой",
   pilot: "Пилотная гипотеза",
+  discovery: "Сбор исходных данных",
 } as const;
 
 export function BusinessHub() {
@@ -57,7 +58,7 @@ export function BusinessHub() {
           <h1 id="business-title">Сначала потребности.<br/><em>Потом витрина и продажи.</em></h1>
           <p>Существующие проекты связаны в одном кабинете. Изучаем реальный спрос и экономику, прежде чем обещать рост прибыли.</p>
           <div className="business-hero-stats">
-            <span><b>{businessCases.length}</b> бизнес-кейса</span>
+            <span><b>{businessCases.length}</b> клиентских кейсов</span>
             <span><b>1</b> единая анкета</span>
             <span><b>0</b> выдуманных продаж</span>
           </div>
@@ -65,7 +66,7 @@ export function BusinessHub() {
 
         <section className="business-section" aria-labelledby="business-projects">
           <div className="business-section-heading">
-            <div><span className="business-eyebrow">01 / ИСХОДНЫЕ РЕШЕНИЯ</span><h2 id="business-projects">Что уже создано</h2></div>
+            <div><span className="business-eyebrow">01 / ИСХОДНЫЕ РЕШЕНИЯ</span><h2 id="business-projects">Клиенты и проекты</h2></div>
             <p>Статус показывает тип связи, а не готовность к реальной торговле.</p>
           </div>
           <div className="business-project-grid">
@@ -89,7 +90,7 @@ export function BusinessHub() {
         <section className="business-workspace" aria-labelledby="business-current">
           <div className="business-workspace-head">
             <div><span className="business-eyebrow">02 / КАРТА БИЗНЕСА</span><h2 id="business-current">{current.name}</h2><p>{current.summary}</p></div>
-            <a className="business-external" href={current.url} target={current.url.startsWith("https://") ? "_blank" : undefined} rel={current.url.startsWith("https://") ? "noopener noreferrer" : undefined}>{current.linkLabel}<ExternalLink size={16}/></a>
+            {current.url && current.linkLabel ? <a className="business-external" href={current.url} target={current.url.startsWith("https://") ? "_blank" : undefined} rel={current.url.startsWith("https://") ? "noopener noreferrer" : undefined}>{current.linkLabel}<ExternalLink size={16}/></a> : <span className="business-progress">Ссылка на проект пока не указана</span>}
           </div>
           <div className="business-facts">
             <div><h3>Уже существует</h3><ul>{current.existing.map((fact) => <li key={fact}>{fact}</li>)}</ul></div>
