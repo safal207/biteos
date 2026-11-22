@@ -11,6 +11,8 @@ The Business Discovery view at `/#business` exposes **read-only source snapshots
 | Riva Bella | `safal207/riva-bella-revenue/data/catalog-draft.json` | Draft without approved items | 0 | N/A | 0 |
 | Bite Burger / Roby's | Internal BiteOS delivery model | Demo-only | Derived at runtime | Variable | 0 confirmed in BiteOS |
 
+No existing menu price is silently overwritten. Missing prices remain missing, and the UI does not insert guesses. Public checkout/payment/official-restaurant claims still require appropriate verification and authorization. The separate private Riva Bella source remains private: its manually entered 176-item version is not copied into public BiteOS.
+
 The read-only snapshots are stored in `apps/kiosk/src/data` with source path and Git blob SHA. The source change is not automatically applied. A catalog is not owner-approved just because its price is present.
 
 **Riva Bella:** the public Revenue Lab contains eight fictional products, and its draft owner-review catalog has zero items. A separate 176-item Gazipaşa concept is private. None of these private items, images or unpublished prices are exported to BitOS. A future approved public export must pass the source repository's product approval gate.
@@ -25,7 +27,7 @@ The read-only snapshots are stored in `apps/kiosk/src/data` with source path and
 
 ## Revenue Lab
 
-The model is **hypothetical** and requires user-entered values; no numbers are derived from unconfirmed catalog prices.
+The menu snapshots are the **user-entered working baselines** for product/assortment discovery, without any forced owner-confirmation gate for prototyping. Users may explicitly copy a selected item price into the scenario. This does not auto-create a discount, order or product pairing. All other economic inputs (traffic, attach rates, variable costs, campaign cost) are user-entered and the result is **hypothetical**; no sales or costs are inferred from a menu price.
 
 ```text
 eligible_orders = orders_per_day * days
