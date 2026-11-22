@@ -1,5 +1,5 @@
 import { catalogFor } from "./catalogIntelligence.ts";
-import type { SourceCatalogItem } from "./catalogIntelligence";
+import type { SourceCatalog, SourceCatalogItem } from "./catalogIntelligence";
 
 /** Hand-picked hypotheses referencing exact IDs from the user's working menus.
  * These are test proposals, NOT observed pairings, demand or approved discounts. */
@@ -95,8 +95,10 @@ export function selectedPair(
   businessId: string,
   mainId: string,
   addOnId: string,
+  catalogOverride?: SourceCatalog,
 ) {
-  const catalog = catalogFor(businessId);
+  const catalog = catalogOverride ?? catalogFor(businessId);
+  if (catalog.businessId !== businessId) return null;
   if (catalog.status !== "working-menu-snapshot") return null;
   const main = catalog.items.find((item) => item.id === mainId);
   const addOn = catalog.items.find((item) => item.id === addOnId);
