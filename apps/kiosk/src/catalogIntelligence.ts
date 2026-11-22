@@ -1,6 +1,6 @@
 import sefaSource from "./data/sefaSource.json" with { type: "json" };
 import mioraSource from "./data/mioraSource.json" with { type: "json" };
-import { initialDeliveryState } from "./delivery";
+import { initialDeliveryState } from "./delivery.ts";
 
 export type SourceCatalogItem = {
   id: string;
