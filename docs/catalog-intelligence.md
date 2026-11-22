@@ -44,3 +44,12 @@ Results are **not net profit**. The calculation assumes constant baseline order 
 A real claim requires actual POS baseline, owner-confirmed COGS/packaging/fees, consistent eligible order denominator, randomized holdout experiment where feasible, and reconciliation of demonstrated checkout to completed paid orders.
 
 No data from the input is sent or persisted by the Revenue Lab.
+
+## Opportunity Lab (menu-based experiments)
+
+- Five deterministic test hypotheses use exact source IDs: two MIORA coffee/food pairings and three Sefa Beach meal/drink pairings.
+- Any two priced menu items can also be selected manually. A pair with a missing price, identical product IDs or an unknown product is blocked.
+- Each proposal shows original names, source prices, add-on price and the total **at the sum of listed prices; no fake bundle discount is applied**.
+- A user can copy the add-on price into Revenue Lab by clicking, while traffic, attach rates, variable costs and campaign cost must still be supplied separately.
+- Pair recommendations are **hypotheses**, not demand patterns, observed customer behavior or ready-to-publish campaigns. For validation compare completed POS orders and incremental contribution of eligible sessions across controlled variants.
+- Riva Bella private 176-item catalog is not published or used to generate public recommendations. Roby's curated existing demo flow is separate.
