@@ -822,6 +822,9 @@ export function DeliveryApp() {
           <a href="#kiosk">
             Открыть меню на табло <ArrowRight size={15} />
           </a>
+          <a href="#business">
+            Исследовать бизнес <ArrowRight size={15} />
+          </a>
         </div>
       </aside>
 
