@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, ClipboardList, Download, ExternalLink, ShieldCheck } from "lucide-react";
 import { businessCases, discoveryExport, discoveryQuestions } from "./businessRegistry";
+import { CatalogRevenueLab } from "./CatalogRevenueLab";
 import type { DiscoveryAnswers } from "./businessRegistry";
 import "./business.css";
 
@@ -94,8 +95,9 @@ export function BusinessHub() {
             <div><h3>Уже существует</h3><ul>{current.existing.map((fact) => <li key={fact}>{fact}</li>)}</ul></div>
             <div><h3>Ещё нужно подтвердить</h3><ul>{current.unknown.map((fact) => <li key={fact}>{fact}</li>)}</ul></div>
           </div>
+          <CatalogRevenueLab key={selected} businessId={selected} />
           <div className="business-discovery-head">
-            <div><span className="business-eyebrow">03 / DISCOVERY ENGINE · ЧЕРНОВИК</span><h2>Собрать реальные потребности</h2></div>
+            <div><span className="business-eyebrow">05 / DISCOVERY ENGINE · ЧЕРНОВИК</span><h2>Собрать реальные потребности</h2></div>
             <span className="business-progress">{completed} из {discoveryQuestions.length}</span>
           </div>
           <p className="business-disclaimer"><ShieldCheck size={17}/> Ответы остаются только в памяти этой вкладки до экспорта. Они не передаются на сервер и не являются проверенными интервью или статистикой продаж.</p>
