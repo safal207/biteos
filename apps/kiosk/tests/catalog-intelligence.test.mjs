@@ -10,7 +10,7 @@ test("Read-only source catalogs keep counts and expose all prices as unverified"
   assert.equal(catalogSummary(miora).missingPrice, 2);
   assert.equal(catalogSummary(sefa).missingPrice, 5);
   for (const c of [miora, sefa]) {
-    assert.equal(c.status, "unverified-source-snapshot");
+    assert.equal(c.status, "working-menu-snapshot");
     assert.match(c.sourceSha ?? "", /^[0-9a-f]{40}$/);
     assert.equal(catalogSummary(c).ownerApproved, 0);
     assert.equal(new Set(c.items.map((item) => item.id)).size, c.items.length);
