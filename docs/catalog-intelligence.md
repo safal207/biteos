@@ -25,6 +25,10 @@ The read-only snapshots are stored in `apps/kiosk/src/data` with source path and
 4. Run unit tests and browser checks at narrow and wide viewports.
 5. Activate real checkout catalog only behind owner-authenticated, scoped backend and server-side verified prices. Never turn a preview into a customer-facing order flow by inference.
 
+## Pacelli (local source pending)
+
+No verified source menu or saved working file has been located for Pacelli. The user can load an existing JSON/CSV source **only inside their browser**, without publishing anything or importing another customer's menu. The imported snapshot can be examined, combined into manual pairs and used for price inputs. Missing prices remain blank, and sales/cost inputs must still be provided. See [Pacelli import contract](pacelli-menu-import.md).
+
 ## Revenue Lab
 
 The menu snapshots are the **user-entered working baselines** for product/assortment discovery, without any forced owner-confirmation gate for prototyping. Users may explicitly copy a selected item price into the scenario. This does not auto-create a discount, order or product pairing. All other economic inputs (traffic, attach rates, variable costs, campaign cost) are user-entered and the result is **hypothetical**; no sales or costs are inferred from a menu price.
