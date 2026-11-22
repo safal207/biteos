@@ -78,3 +78,16 @@
 .opportunity-hint{font-size:11px;color:#7c6b60}
 .opportunity-footnote{font-size:11px!important}
 @media(max-width:650px){.opportunity-grid,.opportunity-selects{grid-template-columns:1fr}.opportunity-builder{padding:15px}.opportunity-total strong{font-size:16px}}
+
+.pacelli-import{margin:18px 0 22px;padding:19px;border:1px solid #ead8c8;background:#fffaf3;border-radius:16px}
+.pacelli-import h3{margin:0 0 8px;font-size:17px}
+.pacelli-import>p{font-size:12px;line-height:1.55;color:#635a50}
+.pacelli-import-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(130px,1fr);gap:12px;margin-top:15px}
+.pacelli-import-controls label{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pacelli-import-controls label>span{font-size:12px;font-weight:750}
+.pacelli-import-file input{width:100%;border:1px solid #dec8b4;background:white;border-radius:10px;padding:10px;font-size:12px}
+.pacelli-import-currency select{width:100%;border:1px solid #dec8b4;background:white;border-radius:10px;padding:11px;font-size:13px}
+.pacelli-import-example code{font-size:11px;overflow-wrap:anywhere}
+.pacelli-import-success{font-size:12px;color:#43633c;background:#f1f7ed;border-radius:12px;padding:13px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pacelli-import-success button{border:1px solid #a8b79c;border-radius:9px;padding:7px 10px;background:white;font-size:11px;cursor:pointer}
+@media(max-width:600px){.pacelli-import-controls{grid-template-columns:1fr}.pacelli-import{padding:15px}}
