@@ -17,7 +17,7 @@ test("Sefa and Riva Bella have distinct public safe demos and unverified data no
   const riva = businessCases.find((item) => item.id === "riva-bella");
   assert.equal(sefa?.url, "https://safal207.github.io/sefa-beach/");
   assert.equal(riva?.url, "https://safal207.github.io/riva-bella-revenue/");
-  assert.match(sefa.summary, /требует проверки владельцем/);
+  assert.match(sefa.summary, /Рабочее QR-меню/);
   assert.match(riva.summary, /вымышленных/);
   assert.ok(!businessCases.some((item) => item.url.includes("riva-bella-gazipasa-concept")));
   assert.equal(discoveryExport("sefa-beach", { need: "Проверить семейные запросы" }).businessId, "sefa-beach");
