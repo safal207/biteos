@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDownRight, FlaskConical, Layers2 } from "lucide-react";
 import { catalogFor } from "./catalogIntelligence";
+import type { SourceCatalog } from "./catalogIntelligence";
 import { opportunitiesFor, selectedPair } from "./opportunityHypotheses";
 
 const money = (minor: number) =>
@@ -11,16 +12,19 @@ const money = (minor: number) =>
 export function OpportunityPlanner({
   businessId,
   onChooseAddOn,
+  catalogOverride,
 }: {
   businessId: string;
   onChooseAddOn: (minor: number) => void;
+  catalogOverride?: SourceCatalog;
 }) {
-  const catalog = useMemo(() => catalogFor(businessId), [businessId]);
+  const builtInCatalog = useMemo(() => catalogFor(businessId), [businessId]);
+  const catalog = catalogOverride ?? builtInCatalog;
   const examples = useMemo(() => opportunitiesFor(businessId), [businessId]);
   const [mainId, setMainId] = useState("");
   const [addOnId, setAddOnId] = useState("");
   const priced = catalog.items.filter((item) => item.priceMinor !== null);
-  const pair = selectedPair(businessId, mainId, addOnId);
+  const pair = selectedPair(businessId, mainId, addOnId, catalog);
 
   if (catalog.status !== "working-menu-snapshot") return null;
 
