@@ -38,3 +38,10 @@ test("Pilot business without catalog has a distinct status", () => {
   assert.equal(catalogFor("ai-cafe").status, "not-applicable");
   assert.equal(catalogFor("ai-cafe").items.length, 0);
 });
+
+test("Pacelli is missing a source and must never default to the burger catalog", () => {
+  const pacelli = catalogFor("pacelli");
+  assert.equal(pacelli.status, "pending-source");
+  assert.equal(pacelli.items.length, 0);
+  assert.equal(catalogSummary(pacelli).ownerApproved, 0);
+});
