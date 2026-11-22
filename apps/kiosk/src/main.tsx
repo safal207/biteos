@@ -41,6 +41,7 @@ import {
   recordKioskOfferEvent,
 } from "./kioskOfferFlow";
 import { DeliveryApp } from "./DeliveryApp";
+import { BusinessHub } from "./BusinessHub";
 import "@fontsource-variable/manrope";
 import "./styles.css";
 
@@ -1423,13 +1424,15 @@ function App() {
   );
 }
 function BiteOS() {
-  const [kiosk, setKiosk] = useState(location.hash === "#kiosk");
+  const [route, setRoute] = useState(location.hash);
   useEffect(() => {
-    const route = () => setKiosk(location.hash === "#kiosk");
-    window.addEventListener("hashchange", route);
-    return () => window.removeEventListener("hashchange", route);
+    const updateRoute = () => setRoute(location.hash);
+    window.addEventListener("hashchange", updateRoute);
+    return () => window.removeEventListener("hashchange", updateRoute);
   }, []);
-  return kiosk ? <App /> : <DeliveryApp />;
+  if (route === "#kiosk") return <App />;
+  if (route === "#business") return <BusinessHub />;
+  return <DeliveryApp />;
 }
 
 createRoot(document.getElementById("root")!).render(
