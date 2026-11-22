@@ -27,7 +27,7 @@ function priceToMinor(value: unknown): number | null {
   let normalized: string;
   if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(source))
     normalized = source.replace(/\./g, "").replace(",", ".");
-  else if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(source))
+  else if (/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(source))
     normalized = source.replace(/,/g, "");
   else if (/^\d+(?:[.,]\d{1,2})?$/.test(source))
     normalized = source.replace(",", ".");
