@@ -16,6 +16,10 @@ Private projects such as Zenit Alanya and the 176-item Riva Bella Gazipaşa conc
 The public entry point is `/#business` (on GitHub Pages, `/biteos/#business`).
 Users can select a case and enter a six-question discovery draft. The browser keeps it only in memory and exports a `biteos.discovery.v1` JSON file on demand. There is no database, upload, customer tracking, model inference, or verified source attached to these answers.
 
+## Read-only catalog adapter and profit scenarios
+
+See [Catalog Intelligence and Revenue Lab](catalog-intelligence.md). MIORA and Sefa now have source-provenanced read-only catalog snapshots, not owner-approved checkout data. Riva has zero approved products imported; the private Riva Gazipaşa concept remains excluded. The financial calculator uses manual hypothetical inputs, reports incremental contribution rather than net profit, and never substitutes unverified menu prices.
+
 ## Next connection contract
 
 1. **Business truth:** owner verifies prices, inventory, costs, opening hours, media and allowed use.
