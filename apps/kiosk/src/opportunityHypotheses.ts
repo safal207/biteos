@@ -1,4 +1,4 @@
-import { catalogFor } from "./catalogIntelligence";
+import { catalogFor } from "./catalogIntelligence.ts";
 import type { SourceCatalogItem } from "./catalogIntelligence";
 
 /** Hand-picked hypotheses referencing exact IDs from the user's working menus.
