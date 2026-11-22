@@ -66,7 +66,9 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
           <span className="business-eyebrow">03 / CATALOG INTELLIGENCE</span>
           <h2 id="catalog-lab-heading">Каталог и достоверность данных</h2>
         </div>
-        <span className="catalog-lab-status">{catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : catalog.status === "working-menu-snapshot" ? "Рабочее меню · твои данные" : "Демоверсия"}</span>
+        <span className="catalog-lab-status">{catalog.status === "pending-source" ? "Ждём исходное меню" : catalog.status === "pending-source"
+            ? "Для Pacelli пока нет файла меню и цен. Можно заполнить анкету потребностей и задать гипотетические значения вручную; товары и суммы не выдумываем."
+          : catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : catalog.status === "working-menu-snapshot" ? "Рабочее меню · твои данные" : "Демоверсия"}</span>
       </div>
       <div className="catalog-metrics">
         <div><strong>{summary.total}</strong><span>позиций</span></div>
