@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChartNoAxesCombined, FileWarning, Search, ShieldAlert } from "lucide-react";
 import { catalogFor, catalogSummary } from "./catalogIntelligence";
+import type { SourceCatalogItem } from "./catalogIntelligence";
 import { estimateScenario, validateScenario } from "./economics";
 import type { Scenario } from "./economics";
 import "./catalogRevenue.css";
@@ -52,6 +53,10 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
   function update(name: keyof Inputs, value: string) {
     setInputs((previous) => ({ ...previous, [name]: value }));
   }
+  function useMenuPrice(item: SourceCatalogItem) {
+    if (item.priceMinor === null) return;
+    update("addOnPrice", (item.priceMinor / 100).toFixed(2));
+  }
 
   return (
     <section className="catalog-lab" aria-labelledby="catalog-lab-heading">
@@ -60,21 +65,21 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
           <span className="business-eyebrow">03 / CATALOG INTELLIGENCE</span>
           <h2 id="catalog-lab-heading">Каталог и достоверность данных</h2>
         </div>
-        <span className="catalog-lab-status">{catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : "Не подтверждено владельцем"}</span>
+        <span className="catalog-lab-status">{catalog.status === "no-approved-products" ? "Нет согласованных товаров" : catalog.status === "not-applicable" ? "Нет товарного каталога" : catalog.status === "working-menu-snapshot" ? "Рабочее меню · твои данные" : "Демоверсия"}</span>
       </div>
       <div className="catalog-metrics">
         <div><strong>{summary.total}</strong><span>позиций</span></div>
         <div><strong>{summary.categoryCount}</strong><span>категорий</span></div>
         <div><strong>{summary.missingPrice}</strong><span>без цены</span></div>
-        <div><strong>{summary.ownerApproved}</strong><span>подтверждено владельцем</span></div>
+        <div><strong>{summary.ownerApproved}</strong><span>подтверждено для реальных продаж</span></div>
       </div>
       <p className="catalog-source">
         Источник: {catalog.source} {catalog.sourceSha ? "· blob " + catalog.sourceSha.slice(0, 8) : ""}
         {catalog.capturedAt ? " · снимок " + catalog.capturedAt.slice(0, 10) : ""}
       </p>
       <p className="catalog-warning"><ShieldAlert size={18} />
-        {catalog.status === "unverified-source-snapshot"
-          ? "Это снимок исходного меню для исследования, а не синхронизация цен. Даже заполненные цены не подтверждены владельцем и не передаются в корзину или расчёт прибыли."
+        {catalog.status === "working-menu-snapshot"
+          ? "Берём цены из меню, которое ты уже внёс, как рабочую основу для планирования. Ничего не переоцениваем и не заменяем. Цена товара может подставляться в сценарий по твоему выбору. Это не POS и не подтверждение фактических продаж."
           : catalog.status === "no-approved-products"
             ? "В публичном Riva Bella Revenue Lab нет согласованных владельцем товаров. Восемь демонстрационных позиций не импортируются; приватный концепт на 176 позиций не публикуется."
             : catalog.status === "demo-only"
@@ -94,7 +99,11 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
             {visible.slice(0, limit).map((item) => (
               <div className="catalog-item" key={item.id}>
                 <span><strong>{item.name}</strong><small>{item.category} · #{item.id}</small></span>
-                <span className="catalog-item-price">{item.priceMinor === null ? "Цена отсутствует" : formatPrice(item.priceMinor, catalog.currency)}<small>не подтверждено</small></span>
+                <span className="catalog-item-price">
+                  {item.priceMinor === null ? "Цена отсутствует" : formatPrice(item.priceMinor, catalog.currency)}
+                  <small>{catalog.status === "working-menu-snapshot" ? "цена из рабочего меню" : "демо"}</small>
+                  {item.priceMinor !== null && <button type="button" className="catalog-use-price" onClick={() => useMenuPrice(item)} aria-label={"Использовать цену для расчёта: " + item.name}>Взять для расчёта</button>}
+                </span>
               </div>
             ))}
             {visible.length === 0 && <p className="catalog-empty">По этому запросу позиций нет.</p>}
@@ -105,7 +114,7 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
 
       <div className="revenue-lab" aria-labelledby="revenue-lab-heading">
         <div className="revenue-lab-title"><ChartNoAxesCombined size={21}/><div><span className="business-eyebrow">04 / REVENUE LAB</span><h2 id="revenue-lab-heading">Сценарий роста за период</h2></div></div>
-        <p>Укажите предположения или свои данные. Прогноз не берёт непроверенные цены из каталога. Расчёт показывает дополнительный маржинальный вклад после переменных затрат и расходов на кампанию, <strong>не чистую прибыль</strong>.</p>
+        <p>Для сценария можно взять цену из твоего рабочего меню кнопкой у товара или ввести её вручную. Заказы, доли допродаж, себестоимость и расходы задаются отдельно. Прогноз показывает дополнительный маржинальный вклад, <strong>не чистую прибыль</strong>.</p>
         <div className="revenue-fields">
           {([
             ["ordersPerDay", "Заказов в день", "1"],
@@ -133,7 +142,7 @@ export function CatalogRevenueLab({ businessId }: { businessId: string }) {
             <div><small>Дополнительный маржинальный вклад</small><strong>{formatPrice(estimate.incrementalContributionMinor, catalog.currency)}</strong></div>
           </div>
         ) : <p className="revenue-empty"><FileWarning size={17}/> Заполните все показатели или откройте условный пример, чтобы увидеть прогноз.</p>}
-        <p className="revenue-footnote">Гипотеза: фиксированное число заказов, отсутствие каннибализации и изменений конверсии основного товара. Отрицательный вклад возможен. Средние значения прогнозные, не фактические. Налоги, аренда, зарплата и другие постоянные расходы не учтены. Для доказательства эффекта нужен POS и контролируемый тест.</p>
+        <p className="revenue-footnote">Выбранная цена — рабочая цена из меню, не доказательство оплаченной продажи. Гипотеза: фиксированное число заказов, отсутствие каннибализации и изменений конверсии основного товара. Отрицательный вклад возможен. Средние значения прогнозные, не фактические. Налоги, аренда, зарплата и другие постоянные расходы не учтены. Для доказательства эффекта нужен POS и контролируемый тест.</p>
       </div>
     </section>
   );
