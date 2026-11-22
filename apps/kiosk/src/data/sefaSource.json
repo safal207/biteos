@@ -1,0 +1,752 @@
+{
+  "schema": "biteos.source-catalog.v1",
+  "businessId": "sefa-beach",
+  "source": {
+    "repository": "safal207/sefa-beach",
+    "path": "menu-baseline.json",
+    "blobSha": "8d56f3e6469e6333953c08cec9feb46af8ebdd9d",
+    "snapshotAt": "2026-11-13",
+    "verifiedByOwner": false
+  },
+  "currency": "TRY",
+  "items": [
+    {
+      "id": "1",
+      "category": "breakfast",
+      "name": "Serpme Kahvaltı",
+      "priceMinor": 60000
+    },
+    {
+      "id": "2",
+      "category": "breakfast",
+      "name": "Tabak Kahvaltı",
+      "priceMinor": 45000
+    },
+    {
+      "id": "3",
+      "category": "omelet",
+      "name": "Sade Omlet",
+      "priceMinor": 20000
+    },
+    {
+      "id": "4",
+      "category": "omelet",
+      "name": "Peynirli Omlet",
+      "priceMinor": 23000
+    },
+    {
+      "id": "5",
+      "category": "omelet",
+      "name": "Karışık Omlet",
+      "priceMinor": 25000
+    },
+    {
+      "id": "6",
+      "category": "omelet",
+      "name": "Mantarlı Omlet",
+      "priceMinor": 23000
+    },
+    {
+      "id": "7",
+      "category": "sandwich",
+      "name": "Beyaz Peynirli Sandviç",
+      "priceMinor": 25000
+    },
+    {
+      "id": "8",
+      "category": "sandwich",
+      "name": "Tavuklu Sandviç",
+      "priceMinor": 30000
+    },
+    {
+      "id": "9",
+      "category": "sandwich",
+      "name": "Köfte Sandviç",
+      "priceMinor": 35000
+    },
+    {
+      "id": "10",
+      "category": "sandwich",
+      "name": "Tonbalıklı Sandviç",
+      "priceMinor": 35000
+    },
+    {
+      "id": "11",
+      "category": "toast",
+      "name": "Peynirli Tost",
+      "priceMinor": 23000
+    },
+    {
+      "id": "12",
+      "category": "toast",
+      "name": "Salamlı Tost",
+      "priceMinor": 23000
+    },
+    {
+      "id": "13",
+      "category": "toast",
+      "name": "Karışık Tost",
+      "priceMinor": 25000
+    },
+    {
+      "id": "14",
+      "category": "snack",
+      "name": "Günün Çorbası",
+      "priceMinor": 20000
+    },
+    {
+      "id": "15",
+      "category": "snack",
+      "name": "Atıştırma Sepeti",
+      "priceMinor": 40000
+    },
+    {
+      "id": "16",
+      "category": "snack",
+      "name": "Cips",
+      "priceMinor": 20000
+    },
+    {
+      "id": "17",
+      "category": "snack",
+      "name": "Karides Sote",
+      "priceMinor": 85000
+    },
+    {
+      "id": "18",
+      "category": "snack",
+      "name": "Kalamar Tava",
+      "priceMinor": 75000
+    },
+    {
+      "id": "19",
+      "category": "snack",
+      "name": "Mantar Güveç",
+      "priceMinor": 30000
+    },
+    {
+      "id": "20",
+      "category": "snack",
+      "name": "Nachos",
+      "priceMinor": 30000
+    },
+    {
+      "id": "21",
+      "category": "snack",
+      "name": "Sigara Böreği",
+      "priceMinor": 30000
+    },
+    {
+      "id": "22",
+      "category": "snack",
+      "name": "Soğan Halkası",
+      "priceMinor": 20000
+    },
+    {
+      "id": "23",
+      "category": "salad",
+      "name": "Çoban Salatası",
+      "priceMinor": 20000
+    },
+    {
+      "id": "24",
+      "category": "salad",
+      "name": "Avakado Salata",
+      "priceMinor": 30000
+    },
+    {
+      "id": "25",
+      "category": "salad",
+      "name": "Etli Salata",
+      "priceMinor": 60000
+    },
+    {
+      "id": "26",
+      "category": "salad",
+      "name": "Tavuk Salata",
+      "priceMinor": 40000
+    },
+    {
+      "id": "27",
+      "category": "salad",
+      "name": "Tonbalıklı Salata",
+      "priceMinor": 45000
+    },
+    {
+      "id": "28",
+      "category": "salad",
+      "name": "Karides Salata",
+      "priceMinor": 70000
+    },
+    {
+      "id": "29",
+      "category": "pasta",
+      "name": "S. Napolitan",
+      "priceMinor": 40000
+    },
+    {
+      "id": "30",
+      "category": "pasta",
+      "name": "S. Bolonez",
+      "priceMinor": 55000
+    },
+    {
+      "id": "31",
+      "category": "pasta",
+      "name": "Fettuccini",
+      "priceMinor": 45000
+    },
+    {
+      "id": "32",
+      "category": "pasta",
+      "name": "Penne Pesta",
+      "priceMinor": 45000
+    },
+    {
+      "id": "33",
+      "category": "pasta",
+      "name": "Mantı",
+      "priceMinor": 40000
+    },
+    {
+      "id": "34",
+      "category": "pizza",
+      "name": "Margarita Pizza",
+      "priceMinor": 40000
+    },
+    {
+      "id": "35",
+      "category": "pizza",
+      "name": "Salamlı Pizza",
+      "priceMinor": 45000
+    },
+    {
+      "id": "36",
+      "category": "pizza",
+      "name": "Alaturka Pizza",
+      "priceMinor": 55000
+    },
+    {
+      "id": "37",
+      "category": "pizza",
+      "name": "Deniz Ürünleri Pizza",
+      "priceMinor": 55000
+    },
+    {
+      "id": "38",
+      "category": "pizza",
+      "name": "Pizza Hawaii",
+      "priceMinor": 50000
+    },
+    {
+      "id": "39",
+      "category": "burger",
+      "name": "Hamburger",
+      "priceMinor": 45000
+    },
+    {
+      "id": "40",
+      "category": "burger",
+      "name": "Cheese Burger",
+      "priceMinor": 50000
+    },
+    {
+      "id": "41",
+      "category": "burger",
+      "name": "Sefa Burger",
+      "priceMinor": 60000
+    },
+    {
+      "id": "42",
+      "category": "chicken",
+      "name": "Tavuk Şiş",
+      "priceMinor": 45000
+    },
+    {
+      "id": "43",
+      "category": "chicken",
+      "name": "Tavuk Izgara",
+      "priceMinor": 45000
+    },
+    {
+      "id": "44",
+      "category": "chicken",
+      "name": "Tavuk Pirzola",
+      "priceMinor": 45000
+    },
+    {
+      "id": "45",
+      "category": "chicken",
+      "name": "Tavuk Kanat",
+      "priceMinor": 50000
+    },
+    {
+      "id": "46",
+      "category": "chicken",
+      "name": "Tavuk Köri",
+      "priceMinor": 50000
+    },
+    {
+      "id": "47",
+      "category": "chicken",
+      "name": "Fesleğen Soslu Tavuk",
+      "priceMinor": 50000
+    },
+    {
+      "id": "48",
+      "category": "chicken",
+      "name": "Barbekü Soslu Tavuk",
+      "priceMinor": 50000
+    },
+    {
+      "id": "49",
+      "category": "chicken",
+      "name": "Acı & Tatlı Tavuk",
+      "priceMinor": 50000
+    },
+    {
+      "id": "50",
+      "category": "chicken",
+      "name": "Tavuk Sote",
+      "priceMinor": 50000
+    },
+    {
+      "id": "51",
+      "category": "chicken",
+      "name": "Tavuk Wrap",
+      "priceMinor": 45000
+    },
+    {
+      "id": "52",
+      "category": "chicken",
+      "name": "Vejetaryan Güveç",
+      "priceMinor": 45000
+    },
+    {
+      "id": "53",
+      "category": "steak",
+      "name": "Barnez Soslu Antrikot",
+      "priceMinor": 95000
+    },
+    {
+      "id": "54",
+      "category": "steak",
+      "name": "Biberli Steak",
+      "priceMinor": 95000
+    },
+    {
+      "id": "55",
+      "category": "steak",
+      "name": "Mantarlı Steak",
+      "priceMinor": 95000
+    },
+    {
+      "id": "56",
+      "category": "steak",
+      "name": "Hawai Steak",
+      "priceMinor": 95000
+    },
+    {
+      "id": "57",
+      "category": "meat",
+      "name": "Et Şiş",
+      "priceMinor": 65000
+    },
+    {
+      "id": "58",
+      "category": "meat",
+      "name": "Kuzu Pirzola",
+      "priceMinor": 75000
+    },
+    {
+      "id": "59",
+      "category": "meat",
+      "name": "Saç Kavurma",
+      "priceMinor": 60000
+    },
+    {
+      "id": "60",
+      "category": "meat",
+      "name": "Et Güveç",
+      "priceMinor": 60000
+    },
+    {
+      "id": "61",
+      "category": "meat",
+      "name": "Kuzu İncik",
+      "priceMinor": 90000
+    },
+    {
+      "id": "62",
+      "category": "meat",
+      "name": "Köfte Izgara",
+      "priceMinor": 55000
+    },
+    {
+      "id": "63",
+      "category": "meat",
+      "name": "Akdeniz Kebap",
+      "priceMinor": 80000
+    },
+    {
+      "id": "64",
+      "category": "meat",
+      "name": "Adana Kebap",
+      "priceMinor": 57000
+    },
+    {
+      "id": "65",
+      "category": "meat",
+      "name": "Patlıcan Kebap",
+      "priceMinor": 60000
+    },
+    {
+      "id": "66",
+      "category": "meat",
+      "name": "Etli Wrap",
+      "priceMinor": 60000
+    },
+    {
+      "id": "67",
+      "category": "meat",
+      "name": "Sefa Beach Special",
+      "priceMinor": 120000
+    },
+    {
+      "id": "68",
+      "category": "meat",
+      "name": "Karışık Izgara",
+      "priceMinor": 85000
+    },
+    {
+      "id": "69",
+      "category": "meat",
+      "name": "Hindi Şiş",
+      "priceMinor": null
+    },
+    {
+      "id": "70",
+      "category": "mexican",
+      "name": "Fajita Et",
+      "priceMinor": 80000
+    },
+    {
+      "id": "71",
+      "category": "mexican",
+      "name": "Fajita Tavuk",
+      "priceMinor": 60000
+    },
+    {
+      "id": "72",
+      "category": "mexican",
+      "name": "Fajita Combo",
+      "priceMinor": 90000
+    },
+    {
+      "id": "73",
+      "category": "mexican",
+      "name": "Mexican Steak",
+      "priceMinor": 85000
+    },
+    {
+      "id": "74",
+      "category": "seafood",
+      "name": "Çupra",
+      "priceMinor": 65000
+    },
+    {
+      "id": "75",
+      "category": "seafood",
+      "name": "Levrek",
+      "priceMinor": 70000
+    },
+    {
+      "id": "76",
+      "category": "seafood",
+      "name": "Somon Izgara",
+      "priceMinor": 70000
+    },
+    {
+      "id": "77",
+      "category": "seafood",
+      "name": "Jumbo Karides",
+      "priceMinor": 100000
+    },
+    {
+      "id": "78",
+      "category": "seafood",
+      "name": "Karides Sote",
+      "priceMinor": 75000
+    },
+    {
+      "id": "79",
+      "category": "seafood",
+      "name": "Mevsim Balıkları",
+      "priceMinor": null
+    },
+    {
+      "id": "80",
+      "category": "kids",
+      "name": "2'li Mini Burger",
+      "priceMinor": 30000
+    },
+    {
+      "id": "81",
+      "category": "kids",
+      "name": "Tavuk Nugget",
+      "priceMinor": 25000
+    },
+    {
+      "id": "82",
+      "category": "kids",
+      "name": "Balık Parmak",
+      "priceMinor": 30000
+    },
+    {
+      "id": "83",
+      "category": "kids",
+      "name": "Köfte Spagetti",
+      "priceMinor": 30000
+    },
+    {
+      "id": "84",
+      "category": "dessert",
+      "name": "Çikolata Şelalesi",
+      "priceMinor": null
+    },
+    {
+      "id": "85",
+      "category": "dessert",
+      "name": "Sütlaç",
+      "priceMinor": null
+    },
+    {
+      "id": "86",
+      "category": "dessert",
+      "name": "Günün Tatlısı",
+      "priceMinor": null
+    },
+    {
+      "id": "87",
+      "category": "cold",
+      "name": "Su Küçük",
+      "priceMinor": 3500
+    },
+    {
+      "id": "88",
+      "category": "cold",
+      "name": "Su Büyük",
+      "priceMinor": 6000
+    },
+    {
+      "id": "89",
+      "category": "cold",
+      "name": "Cola / Fanta / Sprite",
+      "priceMinor": 10000
+    },
+    {
+      "id": "90",
+      "category": "cold",
+      "name": "Portakal Suyu",
+      "priceMinor": 15000
+    },
+    {
+      "id": "91",
+      "category": "cold",
+      "name": "Red Bull",
+      "priceMinor": 15000
+    },
+    {
+      "id": "92",
+      "category": "cold",
+      "name": "Tonic Water",
+      "priceMinor": 10000
+    },
+    {
+      "id": "93",
+      "category": "cold",
+      "name": "Soda Küçük",
+      "priceMinor": 4500
+    },
+    {
+      "id": "94",
+      "category": "cold",
+      "name": "Soda Büyük",
+      "priceMinor": 6000
+    },
+    {
+      "id": "95",
+      "category": "cold",
+      "name": "Limonata",
+      "priceMinor": 10000
+    },
+    {
+      "id": "96",
+      "category": "cold",
+      "name": "Ice Tea",
+      "priceMinor": 10000
+    },
+    {
+      "id": "97",
+      "category": "cold",
+      "name": "Şalgam",
+      "priceMinor": 7000
+    },
+    {
+      "id": "98",
+      "category": "cold",
+      "name": "Ayran",
+      "priceMinor": 8000
+    },
+    {
+      "id": "99",
+      "category": "coffee",
+      "name": "Ice Americano",
+      "priceMinor": 14000
+    },
+    {
+      "id": "100",
+      "category": "coffee",
+      "name": "Ice Coffee",
+      "priceMinor": 15000
+    },
+    {
+      "id": "101",
+      "category": "coffee",
+      "name": "Ice Caramel Latte",
+      "priceMinor": 15000
+    },
+    {
+      "id": "102",
+      "category": "coffee",
+      "name": "Ice Mocha",
+      "priceMinor": 15000
+    },
+    {
+      "id": "103",
+      "category": "shake",
+      "name": "Çilekli Milkshake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "104",
+      "category": "shake",
+      "name": "Muzlu Milkshake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "105",
+      "category": "shake",
+      "name": "Vanilyalı Milkshake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "106",
+      "category": "shake",
+      "name": "Çikolatalı Milkshake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "107",
+      "category": "shake",
+      "name": "Karamelli Milkshake",
+      "priceMinor": 15000
+    },
+    {
+      "id": "108",
+      "category": "frozen",
+      "name": "Çilek Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "109",
+      "category": "frozen",
+      "name": "Muz Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "110",
+      "category": "frozen",
+      "name": "Mango Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "111",
+      "category": "frozen",
+      "name": "Çarkıfelek Meyvesi Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "112",
+      "category": "frozen",
+      "name": "Şeftali Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "113",
+      "category": "frozen",
+      "name": "Kavun / Karpuz Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "114",
+      "category": "frozen",
+      "name": "Orman Meyveleri Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "115",
+      "category": "frozen",
+      "name": "Kivi Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "116",
+      "category": "frozen",
+      "name": "Elma Frozen",
+      "priceMinor": 14000
+    },
+    {
+      "id": "117",
+      "category": "hot",
+      "name": "Çay",
+      "priceMinor": 3500
+    },
+    {
+      "id": "118",
+      "category": "hot",
+      "name": "Türk Kahvesi",
+      "priceMinor": 10000
+    },
+    {
+      "id": "119",
+      "category": "hot",
+      "name": "Americano",
+      "priceMinor": 14000
+    },
+    {
+      "id": "120",
+      "category": "hot",
+      "name": "Espresso",
+      "priceMinor": 10000
+    },
+    {
+      "id": "121",
+      "category": "hot",
+      "name": "Cappuccino",
+      "priceMinor": 15000
+    },
+    {
+      "id": "122",
+      "category": "hot",
+      "name": "Cafe Latte",
+      "priceMinor": 15000
+    },
+    {
+      "id": "123",
+      "category": "hot",
+      "name": "Bitki Çayları",
+      "priceMinor": 10000
+    }
+  ]
+}
