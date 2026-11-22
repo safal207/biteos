@@ -97,7 +97,7 @@ export function BusinessHub() {
           </div>
           <CatalogRevenueLab key={selected} businessId={selected} />
           <div className="business-discovery-head">
-            <div><span className="business-eyebrow">05 / DISCOVERY ENGINE · ЧЕРНОВИК</span><h2>Собрать реальные потребности</h2></div>
+            <div><span className="business-eyebrow">06 / DISCOVERY ENGINE · ЧЕРНОВИК</span><h2>Собрать реальные потребности</h2></div>
             <span className="business-progress">{completed} из {discoveryQuestions.length}</span>
           </div>
           <p className="business-disclaimer"><ShieldCheck size={17}/> Ответы остаются только в памяти этой вкладки до экспорта. Они не передаются на сервер и не являются проверенными интервью или статистикой продаж.</p>
