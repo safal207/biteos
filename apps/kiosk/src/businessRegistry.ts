@@ -2,12 +2,12 @@ export type BusinessCase = {
   id: string;
   name: string;
   sector: string;
-  connection: "native" | "linked-demo" | "pilot";
+  connection: "native" | "linked-demo" | "pilot" | "discovery";
   summary: string;
   existing: readonly string[];
   unknown: readonly string[];
-  url: string;
-  linkLabel: string;
+  url?: string;
+  linkLabel?: string;
 };
 
 export const businessCases: readonly BusinessCase[] = [
@@ -65,6 +65,15 @@ export const businessCases: readonly BusinessCase[] = [
     unknown: ["Подготовка разрешённого к публикации каталога и фотографий", "Проверка полноты 176 позиций", "Реальная себестоимость и POS-чеки", "Разрешение на публикацию концепта"],
     url: "https://safal207.github.io/riva-bella-revenue/",
     linkLabel: "Открыть публичный Revenue Lab",
+  },
+  {
+    id: "pacelli",
+    name: "Pacelli (Пачелли)",
+    sector: "Ресторанный проект · локация уточняется",
+    connection: "discovery",
+    summary: "Ресторанный кейс из предыдущего обсуждения. Пока нет подтверждённого исходного меню, проекта сайта или ссылки — начинаем с диагностики потребностей.",
+    existing: ["Добавлен в реестр BitOS для исследования", "Общая анкета потребностей доступна"],
+    unknown: ["Исходный файл меню и введённые цены", "Ссылка на текущий проект или витрину", "Клиентские сценарии, спрос и экономика", "Местоположение и условия сотрудничества"],
   },
   {
     id: "ai-cafe",
